@@ -1,8 +1,5 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AppProvider } from './context/AppContext';
 import Splash from './pages/Splash';
 import Login from './pages/Login';
 import Home from './pages/Home';
@@ -15,20 +12,22 @@ import RootLayout from './navigation/RootLayout';
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Splash />} />
-        <Route path="/login" element={<Login />} />
-        <Route element={<RootLayout />}> 
-          <Route path="/home" element={<Home />} />
-          <Route path="/trip" element={<TripPlanner />} />
-          <Route path="/safety" element={<Safety />} />
-          <Route path="/sos" element={<SOS />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="*" element={<Home />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <AppProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Splash />} />
+          <Route path="/login" element={<Login />} />
+          <Route element={<RootLayout />}> 
+            <Route path="/home" element={<Home />} />
+            <Route path="/trip" element={<TripPlanner />} />
+            <Route path="/safety" element={<Safety />} />
+            <Route path="/sos" element={<SOS />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="*" element={<Home />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </AppProvider>
   );
 }
