@@ -5,7 +5,10 @@ import App from './App.jsx'
 import { AppProvider } from './context/AppContext.jsx'
 import { registerSW } from 'virtual:pwa-register'
 
-registerSW({ immediate: true })
+// Register PWA Service Worker in production builds
+if (import.meta.env.PROD) {
+  registerSW({ immediate: true })
+}
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
