@@ -43,7 +43,16 @@ export default function Home() {
             </div>
             <div className="relative hidden md:block">
               <div className="absolute inset-0 bg-gradient-to-br from-pink-300/30 to-purple-300/30" />
-              <div className="h-full w-full" />
+              <div className="h-full w-full flex items-center justify-center p-10">
+                <div className="relative max-w-md rounded-3xl border border-white/50 bg-white/70 backdrop-blur-md shadow-xl p-6">
+                  <div className="absolute -top-8 -left-8 h-24 w-24 rounded-full bg-pink-300/30 blur-2xl" />
+                  <div className="absolute -bottom-8 -right-8 h-24 w-24 rounded-full bg-purple-300/30 blur-2xl" />
+                  <p className="text-xl font-semibold leading-relaxed text-gray-900">
+                    "Your safety is your superpower. We’re here with you, every step."
+                  </p>
+                  <p className="mt-3 text-sm font-medium text-pink-700">— SafarSaheli</p>
+                </div>
+              </div>
             </div>
           </div>
         </section>

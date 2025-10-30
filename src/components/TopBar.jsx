@@ -1,5 +1,5 @@
 import { Link, NavLink } from 'react-router-dom';
-import { FaHome, FaRoute, FaShieldAlt, FaBell, FaTrophy, FaGlobe, FaHeart, FaUser } from 'react-icons/fa';
+import { FaHome, FaRoute, FaShieldAlt, FaBell, FaTrophy, FaHeart, FaUser, FaComments, FaHandHoldingHeart } from 'react-icons/fa';
 
 const tabs = [
   { to: '/home', label: 'Home', icon: FaHome },
@@ -7,6 +7,7 @@ const tabs = [
   { to: '/safety', label: 'Safety', icon: FaShieldAlt },
   { to: '/sos', label: 'SOS', icon: FaBell },
   { to: '/leaderboard', label: 'Leaderboard', icon: FaTrophy },
+  { to: '/saheli', label: 'Saheli', icon: FaComments },
 ];
 
 export default function TopBar() {
@@ -14,8 +15,8 @@ export default function TopBar() {
     <header className="sticky top-0 z-40 border-b border-white/30 bg-white/70 backdrop-blur-xl">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
         <Link to="/home" className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 text-white">
-            <FaGlobe />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-pink-600 text-white ring-1 ring-white/40">
+            <FaHandHoldingHeart />
           </div>
           <div>
             <div className="text-sm uppercase tracking-widest text-gray-500">SafarSaheli</div>

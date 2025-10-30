@@ -1,18 +1,19 @@
 import { NavLink } from 'react-router-dom';
-import { FaHome, FaRoute, FaShieldAlt, FaBell, FaUser } from 'react-icons/fa';
+import { FaHome, FaRoute, FaShieldAlt, FaBell, FaUser, FaComments } from 'react-icons/fa';
 
 const tabs = [
   { to: '/home', label: 'Home', icon: FaHome },
   { to: '/trip', label: 'Trip', icon: FaRoute },
   { to: '/safety', label: 'Safety', icon: FaShieldAlt },
   { to: '/sos', label: 'SOS', icon: FaBell },
+  { to: '/saheli', label: 'Saheli', icon: FaComments },
   { to: '/profile', label: 'Profile', icon: FaUser },
 ];
 
 export default function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200/50 shadow-lg z-50">
-      <div className="max-w-5xl mx-auto grid grid-cols-5">
+      <div className="max-w-5xl mx-auto grid grid-cols-6">
         {tabs.map(({ to, label, icon: Icon }) => (
           <NavLink key={to} to={to} className="group py-3 px-2">
             {({ isActive }) => (
