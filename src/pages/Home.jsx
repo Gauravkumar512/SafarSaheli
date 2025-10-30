@@ -99,18 +99,9 @@ export default function Home() {
               className={`group relative overflow-hidden rounded-3xl p-6 bg-white border border-pink-200 shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 hover:border-pink-300`}
               style={{ animationDelay: `${index * 100}ms` }}
             >
-              {/* Subtle Pattern */}
-              <div className="absolute inset-0 opacity-5">
-                <div className="absolute top-4 right-4 w-20 h-20 bg-pink-300 rounded-full"></div>
-                <div className="absolute bottom-4 left-4 w-16 h-16 bg-rose-300 rounded-full"></div>
-              </div>
-              
               <div className="relative z-10">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center mb-4">
                   <card.icon className="text-4xl text-pink-600" />
-                  <div className="w-8 h-8 bg-pink-50 border border-pink-200 rounded-lg flex items-center justify-center group-hover:bg-pink-100 transition-colors">
-                    <FiBookmark className="text-lg text-pink-600" />
-                  </div>
                 </div>
                 <h3 className="text-xl font-bold mb-1 text-gray-900">{card.title}</h3>
                 <p className="text-gray-600 text-sm">{card.subtitle}</p>

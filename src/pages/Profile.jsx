@@ -128,15 +128,7 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Saved Items */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl p-8 border border-white/20 mb-8">
-          <h3 className="text-xl font-bold text-gray-900 mb-6">Saved Items</h3>
-          <div className="text-center py-12">
-            <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center" />
-            <h4 className="text-lg font-semibold text-gray-900 mb-2">No saved items yet</h4>
-            <p className="text-gray-600">Your saved trips and places will appear here</p>
-          </div>
-        </div>
+        
 
         {/* Settings */}
         <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl p-8 border border-white/20">
