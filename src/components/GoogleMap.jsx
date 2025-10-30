@@ -3,30 +3,40 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-const pinkIcon = new L.Icon({
-  iconUrl: 'https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@v1.1.1/img/marker-icon-rose.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [0, -34],
-  shadowSize: [41, 41]
+// Custom SVG pin icon (outline pin with inner circle)
+const pinIcon = new L.DivIcon({
+  className: '',
+  html: `
+    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="34" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 22s-7-5.373-7-12a7 7 0 1 1 14 0c0 6.627-7 12-7 12z" fill="#ffffff"/>
+      <circle cx="12" cy="10" r="3" fill="#ffffff" />
+    </svg>
+  `,
+  iconSize: [26, 34],
+  iconAnchor: [13, 34],
+  popupAnchor: [0, -30]
 });
 
 const categories = [
   { type: 'hospital', icon: '🏥', name: 'Hospital', overpass: 'amenity=hospital' },
   { type: 'lodging', icon: '🏨', name: 'Hotel', overpass: 'tourism=hotel' },
   { type: 'police', icon: '👮‍♀️', name: 'Police', overpass: 'amenity=police' },
-  { type: 'washroom', icon: '🚻', name: 'Washroom', overpass: 'amenity=toilets' }
+  // Washrooms: include public toilets and places with toilets=yes (private access in venues)
+  { type: 'washroom', icon: '🚻', name: 'Washroom', overpass: ['amenity=toilets', 'toilets=yes'] }
 ];
 
 // 🔍 Using a 10 km radius now
 function getOverpassQuery({ lat, lng }, kv) {
+  const filters = Array.isArray(kv) ? kv : [kv];
+  const blocks = filters.map(f => `
+      node[${f}](around:10000,${lat},${lng});
+      way[${f}](around:10000,${lat},${lng});
+      rel[${f}](around:10000,${lat},${lng});
+  `).join('\n');
   return `
     [out:json][timeout:25];
     (
-      node[${kv}](around:10000,${lat},${lng});
-      way[${kv}](around:10000,${lat},${lng});
-      rel[${kv}](around:10000,${lat},${lng});
+      ${blocks}
     );
     out center;
   `;
@@ -37,6 +47,16 @@ function FlyTo({ pos }) {
   useEffect(() => {
     if (pos) map.flyTo([pos.lat, pos.lng], 15);
   }, [pos, map]);
+  return null;
+}
+
+function FitToPlaces({ places }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!places || places.length === 0) return;
+    const bounds = L.latLngBounds(places.map(p => [p.lat, p.lng]));
+    map.fitBounds(bounds.pad(0.15));
+  }, [places, map]);
   return null;
 }
 
@@ -146,22 +166,27 @@ export default function GoogleMap() {
                 attribution='<a href="https://osm.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
-              <Marker position={[center.lat, center.lng]} icon={pinkIcon}>
-                <Popup>You are here</Popup>
-              </Marker>
-              {(places[activeCat] || []).map((p) => (
-                <Marker key={p.id} position={[p.lat, p.lng]} icon={pinkIcon}>
-                  <Popup>
-                    <div style={{ minWidth: 120 }}>
-                      <b>{categories.find(c => c.type === activeCat)?.icon} {p.tags.name || 'Unknown'}</b>
-                      <div className="text-xs text-gray-700 mt-1">
-                        {p.tags['addr:street']}&nbsp;{p.tags['addr:housenumber']}<br />
-                        {p.tags['addr:city'] || ''}
-                      </div>
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
+              {(() => {
+                const visible = activeCat === 'washroom' ? (places[activeCat] || []) : (places[activeCat] || []).filter(p => p.tags?.name);
+                return (
+                  <>
+                    <FitToPlaces places={visible} />
+                    {visible.map((p) => (
+                      <Marker key={p.id} position={[p.lat, p.lng]} icon={pinIcon}>
+                        <Popup>
+                          <div style={{ minWidth: 120 }}>
+                            {p.tags.name && (<b>{p.tags.name}</b>)}
+                            <div className="text-xs text-gray-700 mt-1">
+                              {p.tags['addr:street']}&nbsp;{p.tags['addr:housenumber']}<br />
+                              {p.tags['addr:city'] || ''}
+                            </div>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    ))}
+                  </>
+                );
+              })()}
             </MapContainer>
           )}
         </div>
@@ -172,10 +197,12 @@ export default function GoogleMap() {
           {!loading && (!places[activeCat] || places[activeCat].length === 0) && (
             <div className="text-center text-gray-600 py-10">No results found close by.</div>
           )}
-          {(places[activeCat] || []).map((p) => (
+          {(() => {
+            const visible = activeCat === 'washroom' ? (places[activeCat] || []) : (places[activeCat] || []).filter(p => p.tags?.name);
+            return visible.map((p) => (
             <div key={p.id} className="rounded-2xl border border-pink-200 bg-white p-4 shadow group hover:border-pink-300">
               <div className="font-bold text-pink-700 mb-0.5 flex items-center gap-1">
-                {categories.find(c => c.type === activeCat)?.icon} {p.tags.name || 'Unknown'}
+                {p.tags.name || ''}
               </div>
               <div className="text-gray-600 text-xs mb-2">{p.tags['addr:street']} {p.tags['addr:housenumber']} {p.tags['addr:city']}</div>
               <a
@@ -184,7 +211,7 @@ export default function GoogleMap() {
                 className="inline-block mt-1 text-xs rounded-full border border-pink-200 px-2 py-1 text-pink-600 hover:bg-pink-50 transition"
               >View on OpenStreetMap →</a>
             </div>
-          ))}
+          )) })()}
         </div>
       )}
     </div>
