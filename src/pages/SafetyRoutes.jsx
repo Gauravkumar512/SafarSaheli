@@ -1,24 +1,8 @@
-import { useRef, useState } from 'react';
-import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap } from 'react-leaflet';
-import L from 'leaflet';
+import { useRef, useState, useEffect } from 'react';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { FaWalking, FaFlag, FaSearch } from 'react-icons/fa';
-import 'leaflet/dist/leaflet.css';
 const newDelhi = { lat: 28.6139, lng: 77.2090 };
-
-const iconBlue = new L.Icon({
-  iconUrl: 'https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@v1.1.1/img/marker-icon-blue.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.4.0/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [0, -34],
-  shadowSize: [41, 41],
-});
-const iconHospital = new L.DivIcon({
-  html: '<span style="font-size: 1.5rem;">🏥</span>'
-});
-const iconPolice = new L.DivIcon({
-  html: '<span style="font-size: 1.5rem;">👮‍♀️</span>'
-});
 
 function randomOffset(center, min=0.01, max=0.025) {
   // offset in degrees
@@ -71,9 +55,56 @@ export default function SafetyRoutes() {
   const [destVal, setDestVal] = useState('');
   const [startCoord, setStartCoord] = useState(null);
   const [endCoord, setEndCoord] = useState(null);
-  const [routes, setRoutes] = useState([]);
-  const [safestRouteIdx, setSafestRouteIdx] = useState(null);
-  const mapRef = useRef(null);
+  const mapContainerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const routeSourceIdRef = useRef('route');
+  const pointSourceIdRef = useRef('runner');
+  const [geoRoute, setGeoRoute] = useState([]); // [lat, lng]
+  const [isAnimating, setIsAnimating] = useState(false);
+  const animTimerRef = useRef(null);
+  const apiKey = '90ada7c794c2445185ce843bb63da847';
+  const [mapReady, setMapReady] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  // Initialize MapLibre map with Geoapify style
+  useEffect(() => {
+    if (mapInstanceRef.current) return;
+    // Debug: log if API key is present (masked)
+    try {
+      const masked = apiKey && apiKey !== 'YOUR_GEOAPIFY_API_KEY' ? `${String(apiKey).slice(0, 6)}***` : 'NONE';
+      // eslint-disable-next-line no-console
+      console.log('[Geoapify] API key detected:', masked);
+      // eslint-disable-next-line no-console
+      console.log('[Geoapify] Vite key present:', Boolean(typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEOAPIFY_KEY));
+    } catch {}
+    if (!apiKey || apiKey === 'YOUR_GEOAPIFY_API_KEY') {
+      setErrorMsg('Geoapify API key missing. For Vite, set VITE_GEOAPIFY_KEY in .env and restart.');
+      return;
+    }
+    const map = new maplibregl.Map({
+      container: mapContainerRef.current,
+      style: `https://maps.geoapify.com/v1/styles/osm-bright/style.json?apiKey=${apiKey}`,
+      center: [newDelhi.lng, newDelhi.lat],
+      zoom: 12,
+      attributionControl: true
+    });
+    map.addControl(new maplibregl.NavigationControl(), 'top-right');
+    const onLoad = () => setMapReady(true);
+    map.on('load', onLoad);
+    map.on('error', (e) => {
+      if (!e || !e.error) return;
+      const msg = String(e.error && (e.error.statusText || e.error.message || e.error))
+      setErrorMsg(`Map error: ${msg}. Check API key or network.`);
+    });
+    mapInstanceRef.current = map;
+    return () => {
+      if (mapInstanceRef.current) {
+        map.off('load', onLoad);
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, [apiKey]);
 
   function handleJourney() {
     // For demo, mock geocode New Delhi
@@ -82,16 +113,144 @@ export default function SafetyRoutes() {
     const end = destVal ? randomOffset(center, 0.014, 0.017) : null;
     setStartCoord(start);
     setEndCoord(end);
+    // Reset previous animation/route
+    if (animTimerRef.current) {
+      clearInterval(animTimerRef.current);
+      animTimerRef.current = null;
+    }
+    setIsAnimating(false);
+    setGeoRoute([]);
+    setErrorMsg('');
+
     if (start && end) {
-      const rts = getMockRoutes(start, end);
-      setRoutes(rts);
-      const best = rts.reduce((idx, r, i, arr) => r.score > arr[idx].score ? i : idx, 0);
-      setSafestRouteIdx(best);
+      // Fetch routing from Geoapify
+      const url = `https://api.geoapify.com/v1/routing?waypoints=${start.lat}%2C${start.lng}%7C${end.lat}%2C${end.lng}&mode=drive&apiKey=${apiKey}`;
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          try {
+            const geom = data?.features?.[0]?.geometry;
+            if (!geom) { setErrorMsg('No route found.'); return; }
+            let flattened = [];
+            if (geom.type === 'MultiLineString') {
+              flattened = (geom.coordinates || []).flat(1).map(([lon, lat]) => [lat, lon]);
+            } else if (geom.type === 'LineString') {
+              flattened = (geom.coordinates || []).map(([lon, lat]) => [lat, lon]);
+            } else {
+              setErrorMsg('Unknown route geometry type.');
+              return;
+            }
+            if (flattened.length > 0) {
+              setGeoRoute(flattened);
+              // Draw route and animate
+              const map = mapInstanceRef.current;
+              if (!map) return;
+              const addRouteToMap = () => {
+                const lineCoords = flattened.map(([lat, lng]) => [lng, lat]);
+                const lineGeoJSON = {
+                  type: 'Feature',
+                  geometry: { type: 'LineString', coordinates: lineCoords },
+                  properties: {}
+                };
+                if (map.getSource(routeSourceIdRef.current)) {
+                  map.getSource(routeSourceIdRef.current).setData(lineGeoJSON);
+                } else {
+                  map.addSource(routeSourceIdRef.current, { type: 'geojson', data: lineGeoJSON });
+                  if (!map.getLayer('route-line')) {
+                    map.addLayer({
+                      id: 'route-line',
+                      type: 'line',
+                      source: routeSourceIdRef.current,
+                      layout: { 'line-join': 'round', 'line-cap': 'round' },
+                      paint: { 'line-color': '#2563eb', 'line-width': 6 }
+                    });
+                  }
+                }
+                // Fit bounds to route
+                const lngs = lineCoords.map(c => c[0]);
+                const lats = lineCoords.map(c => c[1]);
+                const bounds = [
+                  [Math.min(...lngs), Math.min(...lats)],
+                  [Math.max(...lngs), Math.max(...lats)]
+                ];
+                map.fitBounds(bounds, { padding: 60, linear: true });
+
+                // Point source for moving marker (circle)
+                const startPoint = { type: 'Feature', geometry: { type: 'Point', coordinates: lineCoords[0] }, properties: {} };
+                if (map.getSource(pointSourceIdRef.current)) {
+                  map.getSource(pointSourceIdRef.current).setData(startPoint);
+                } else {
+                  map.addSource(pointSourceIdRef.current, { type: 'geojson', data: startPoint });
+                  if (!map.getLayer('runner-circle')) {
+                    map.addLayer({
+                      id: 'runner-circle',
+                      type: 'circle',
+                      source: pointSourceIdRef.current,
+                      paint: { 'circle-radius': 6, 'circle-color': '#0ea5e9', 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff' }
+                    });
+                  }
+                }
+
+                // Animate along the route (only if enough points)
+                if (lineCoords.length > 1) {
+                  setIsAnimating(true);
+                  let idx = 0;
+                  if (animTimerRef.current) clearInterval(animTimerRef.current);
+                  animTimerRef.current = setInterval(() => {
+                    idx = Math.min(idx + 1, lineCoords.length - 1);
+                    const next = { type: 'Feature', geometry: { type: 'Point', coordinates: lineCoords[idx] }, properties: {} };
+                    const src = map.getSource(pointSourceIdRef.current);
+                    if (src) src.setData(next);
+                    map.easeTo({ center: lineCoords[idx], duration: 450, easing: t => t });
+                    if (idx >= lineCoords.length - 1) {
+                      clearInterval(animTimerRef.current);
+                      animTimerRef.current = null;
+                      setIsAnimating(false);
+                    }
+                  }, 500);
+                }
+              };
+
+              if (mapReady || (map && map.isStyleLoaded && map.isStyleLoaded())) {
+                addRouteToMap();
+              } else {
+                const once = () => {
+                  addRouteToMap();
+                  map.off('load', once);
+                };
+                map.on('load', once);
+              }
+            }
+          } catch (e) {
+            console.error('Route parse error', e);
+            setErrorMsg('Failed to parse route response.');
+          }
+        })
+        .catch((e) => {
+          console.error('Route fetch error', e);
+          setErrorMsg('Failed to fetch route. Check API key/network.');
+        });
     } else {
-      setRoutes([]);
-      setSafestRouteIdx(null);
+      // Clear route/point layers if present
+      const map = mapInstanceRef.current;
+      if (map) {
+        if (map.getLayer('route-line')) map.removeLayer('route-line');
+        if (map.getSource(routeSourceIdRef.current)) map.removeSource(routeSourceIdRef.current);
+        if (map.getLayer('runner-circle')) map.removeLayer('runner-circle');
+        if (map.getSource(pointSourceIdRef.current)) map.removeSource(pointSourceIdRef.current);
+      }
     }
   }
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (animTimerRef.current) {
+        clearInterval(animTimerRef.current);
+        animTimerRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-white">
@@ -128,51 +287,10 @@ export default function SafetyRoutes() {
           </button>
         </div>
         <div className="rounded-3xl border border-pink-200 shadow bg-white overflow-hidden">
-          <MapContainer
-            ref={mapRef}
-            center={[newDelhi.lat, newDelhi.lng]}
-            zoom={13}
-            style={{ minHeight: 340, minWidth: '100%' }}
-          >
-            <TileLayer
-              attribution='<a href="https://osm.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            {/* Markers for start/destination */}
-            {startCoord && <Marker position={[startCoord.lat, startCoord.lng]} icon={iconBlue}><Popup>Start</Popup></Marker>}
-            {endCoord && <Marker position={[endCoord.lat, endCoord.lng]} icon={iconBlue}><Popup>Destination</Popup></Marker>}
-            {/* Safest route in green, others in grey */}
-            {routes.map((r, i) => (
-              <Polyline
-                key={i}
-                positions={r.polyline.map(p => [p.lat, p.lng])}
-                color={i === safestRouteIdx ? '#16a34a' : '#a3a3a3'}
-                weight={i === safestRouteIdx ? 7 : 6}
-                opacity={i === safestRouteIdx ? 0.8 : 0.4}
-                dashArray={i === safestRouteIdx ? null : '6'}
-              />
-            ))}
-            {/* Place markers along safest route */}
-            {routes[safestRouteIdx]?.polyline && getNearbyMarkers(routes[safestRouteIdx].polyline).map((m, idx) => (
-              <Marker position={[m.lat, m.lng]} icon={m.icon} key={`${m.type}-${idx}`}>
-                <Popup>{m.type === 'hospital' ? 'Hospital' : 'Police Station'} nearby</Popup>
-              </Marker>
-            ))}
-          </MapContainer>
+          <div ref={mapContainerRef} style={{ minHeight: 380, minWidth: '100%' }} />
         </div>
-        {/* Route safety score legend */}
-        {routes.length > 0 && (
-          <div className="mt-5 flex flex-col gap-1">
-            <div className="text-gray-700 font-semibold text-base mb-1">Route Safety Scores</div>
-            <div className="flex gap-4">
-              {routes.map((r, i) => (
-                <div key={i} className={`flex-1 px-4 py-2 rounded-xl font-bold text-center border ${i === safestRouteIdx ? 'bg-green-100 border-green-400 text-green-900' : 'bg-gray-100 border-gray-300 text-gray-500'}`}>
-                  Route {i+1}: {r.score}
-                </div>
-              ))}
-            </div>
-            <div className="text-xs text-gray-400 mt-2">(Safest route shown in green, others for comparison only)</div>
-          </div>
+        {errorMsg && (
+          <div className="mt-3 text-sm text-red-600">{errorMsg}</div>
         )}
       </div>
     </div>
