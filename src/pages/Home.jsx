@@ -5,15 +5,16 @@ import { FiMapPin, FiShield, FiBell, FiAward, FiUser, FiMessageSquare, FiBookmar
 export default function Home() {
   const { loggedInUser } = useApp();
   const cards = [
-    { to: '/trip', title: 'Trip Planner', subtitle: 'Plan your journey', icon: FiMapPin, color: 'from-blue-500 to-cyan-500', hoverColor: 'hover:from-blue-600 hover:to-cyan-600' },
-    { to: '/safety', title: 'Safety & Hygiene', subtitle: 'Find safe places', icon: FiShield, color: 'from-emerald-500 to-lime-500', hoverColor: 'hover:from-emerald-600 hover:to-lime-600' },
-    { to: '/sos', title: 'SOS', subtitle: 'Emergency help', icon: FiBell, color: 'from-rose-500 to-pink-500', hoverColor: 'hover:from-rose-600 hover:to-pink-600' },
-    { to: '/leaderboard', title: 'Leaderboard', subtitle: 'Community ranking', icon: FiAward, color: 'from-violet-500 to-purple-500', hoverColor: 'hover:from-violet-600 hover:to-purple-600' },
-    { to: '/profile', title: 'Profile', subtitle: 'Your account', icon: FiUser, color: 'from-amber-500 to-orange-500', hoverColor: 'hover:from-amber-600 hover:to-orange-600' },
+    { to: '/trip', title: 'Trip Planner', subtitle: 'Plan your journey', icon: FiMapPin },
+    { to: '/safety', title: 'Safety & Hygiene', subtitle: 'Find safe places', icon: FiShield },
+    { to: '/sos', title: 'SOS', subtitle: 'Emergency help', icon: FiBell },
+    { to: '/saheli', title: 'Saheli', subtitle: 'AI safety chatbot', icon: FiMessageSquare },
+    { to: '/leaderboard', title: 'Leaderboard', subtitle: 'Community ranking', icon: FiAward },
+    { to: '/profile', title: 'Profile', subtitle: 'Your account', icon: FiUser },
   ];
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-white">
       <div className="p-6 pb-24 max-w-6xl mx-auto">
         {/* Hero Section */}
         <section className="mb-10 overflow-hidden rounded-3xl border border-white/30 bg-white/70 backdrop-blur-sm">
@@ -72,16 +73,16 @@ export default function Home() {
           
           {/* Stats Cards */}
           <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
+            <div className="bg-white rounded-2xl p-4 border border-pink-200 shadow-sm">
               <div className="text-2xl font-bold text-pink-600">12</div>
               <div className="text-sm text-gray-600">Safe Places</div>
             </div>
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
-              <div className="text-2xl font-bold text-purple-600">5</div>
+            <div className="bg-white rounded-2xl p-4 border border-pink-200 shadow-sm">
+              <div className="text-2xl font-bold text-pink-600">5</div>
               <div className="text-sm text-gray-600">Trips Planned</div>
             </div>
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
-              <div className="text-2xl font-bold text-indigo-600">1.2k</div>
+            <div className="bg-white rounded-2xl p-4 border border-pink-200 shadow-sm">
+              <div className="text-2xl font-bold text-pink-600">1.2k</div>
               <div className="text-sm text-gray-600">Points</div>
             </div>
           </div>
@@ -93,24 +94,24 @@ export default function Home() {
             <Link 
               key={card.to} 
               to={card.to} 
-              className={`group relative overflow-hidden rounded-3xl p-6 text-white bg-gradient-to-br ${card.color} ${card.hoverColor} shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1`}
+              className={`group relative overflow-hidden rounded-3xl p-6 bg-white border border-pink-200 shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 hover:border-pink-300`}
               style={{ animationDelay: `${index * 100}ms` }}
             >
-              {/* Background Pattern */}
-              <div className="absolute inset-0 opacity-10">
-                <div className="absolute top-4 right-4 w-20 h-20 bg-white/20 rounded-full"></div>
-                <div className="absolute bottom-4 left-4 w-16 h-16 bg-white/20 rounded-full"></div>
+              {/* Subtle Pattern */}
+              <div className="absolute inset-0 opacity-5">
+                <div className="absolute top-4 right-4 w-20 h-20 bg-pink-300 rounded-full"></div>
+                <div className="absolute bottom-4 left-4 w-16 h-16 bg-rose-300 rounded-full"></div>
               </div>
               
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-4">
-                  <card.icon className="text-4xl" />
-                  <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center group-hover:bg-white/30 transition-colors">
-                    <FiBookmark className="text-lg text-white" />
+                  <card.icon className="text-4xl text-pink-600" />
+                  <div className="w-8 h-8 bg-pink-50 border border-pink-200 rounded-lg flex items-center justify-center group-hover:bg-pink-100 transition-colors">
+                    <FiBookmark className="text-lg text-pink-600" />
                   </div>
                 </div>
-                <h3 className="text-xl font-bold mb-1">{card.title}</h3>
-                <p className="text-white/80 text-sm">{card.subtitle}</p>
+                <h3 className="text-xl font-bold mb-1 text-gray-900">{card.title}</h3>
+                <p className="text-gray-600 text-sm">{card.subtitle}</p>
               </div>
             </Link>
           ))}
@@ -120,9 +121,9 @@ export default function Home() {
         <div className="mt-8">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Safety Center</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-white/20 hover:bg-white/90 transition-colors">
+            <div className="bg-white rounded-2xl p-4 border border-pink-200 hover:border-pink-300 hover:bg-pink-50/40 transition-colors shadow-sm">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-blue-500 rounded-xl flex items-center justify-center text-white">
+                <div className="w-10 h-10 bg-pink-100 rounded-xl flex items-center justify-center text-pink-700">
                   <FiMapPin />
                 </div>
                 <div>
@@ -132,9 +133,9 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-white/20 hover:bg-white/90 transition-colors">
+            <div className="bg-white rounded-2xl p-4 border border-pink-200 hover:border-pink-300 hover:bg-pink-50/40 transition-colors shadow-sm">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-pink-500 rounded-xl flex items-center justify-center text-white">
+                <div className="w-10 h-10 bg-pink-100 rounded-xl flex items-center justify-center text-pink-700">
                   <FiMessageSquare />
                 </div>
                 <div>
@@ -144,9 +145,9 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-white/20 hover:bg-white/90 transition-colors">
+            <div className="bg-white rounded-2xl p-4 border border-pink-200 hover:border-pink-300 hover:bg-pink-50/40 transition-colors shadow-sm">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-indigo-400 to-blue-600 rounded-xl flex items-center justify-center text-white">
+                <div className="w-10 h-10 bg-pink-100 rounded-xl flex items-center justify-center text-pink-700">
                   <FiShield />
                 </div>
                 <div>
