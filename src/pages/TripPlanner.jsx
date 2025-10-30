@@ -5,8 +5,9 @@ import { FiMapPin, FiCalendar, FiDollarSign, FiStar, FiUsers, FiBookmark, FiChec
 
 export default function TripPlanner() {
   const [destination, setDestination] = useState('');
-  const [days, setDays] = useState(3);
-  const [budget, setBudget] = useState(15000);
+  // Keep user-editable strings for inputs; parse on submit to avoid forced values
+  const [daysText, setDaysText] = useState('3');
+  const [budgetText, setBudgetText] = useState('15000');
   const [style, setStyle] = useState('Mid-Range');
   const [interests, setInterests] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -25,7 +26,8 @@ export default function TripPlanner() {
     Wildlife: ['wildlife', 'sanctuary', 'safari', 'zoo'],
   };
 
-  const allStyles = ['Budget', 'Mid-Range', 'Luxury', 'Homestay'];
+  // Removed 'Budget' from travel style options as requested
+  const allStyles = ['Mid-Range', 'Luxury', 'Homestay'];
   const allInterests = ['Adventure', 'Culture', 'Food', 'Nature', 'Shopping', 'Relaxation', 'History', 'Art', 'Photography', 'Wildlife'];
 
   const suggestions = demoTrips.filter(t => !destination || t.destination.toLowerCase().includes(destination.toLowerCase()));
@@ -38,6 +40,8 @@ export default function TripPlanner() {
     e.preventDefault();
     setLoading(true);
     try {
+      const days = Math.max(1, parseInt(daysText || '1', 10));
+      const budget = Math.max(0, parseInt(budgetText || '0', 10));
       const request = {
         destination,
         days,
@@ -155,8 +159,8 @@ export default function TripPlanner() {
                 <input
                   type="number"
                   min={1}
-                  value={days}
-                  onChange={(e) => setDays(parseInt(e.target.value || '1'))}
+                  value={daysText}
+                  onChange={(e) => setDaysText(e.target.value)}
                   className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-gray-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                 />
               </label>
@@ -169,8 +173,8 @@ export default function TripPlanner() {
                   type="number"
                   min={1000}
                   step={500}
-                  value={budget}
-                  onChange={(e) => setBudget(parseInt(e.target.value || '1000'))}
+                  value={budgetText}
+                  onChange={(e) => setBudgetText(e.target.value)}
                   className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-gray-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                 />
               </label>
