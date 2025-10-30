@@ -1,5 +1,5 @@
 import { Link, NavLink } from 'react-router-dom';
-import { FaHome, FaRoute, FaShieldAlt, FaBell, FaTrophy, FaHeart, FaUser, FaComments, FaHandHoldingHeart } from 'react-icons/fa';
+import { FaHome, FaRoute, FaShieldAlt, FaBell, FaTrophy, FaHeart, FaUser, FaComments, FaHandHoldingHeart, FaCompass } from 'react-icons/fa';
 
 const tabs = [
   { to: '/home', label: 'Home', icon: FaHome },
@@ -8,6 +8,7 @@ const tabs = [
   { to: '/sos', label: 'SOS', icon: FaBell },
   { to: '/leaderboard', label: 'Leaderboard', icon: FaTrophy },
   { to: '/saheli', label: 'Saheli', icon: FaComments },
+  { to: '/routes', label: 'Safety Routes', icon: FaCompass },
 ];
 
 export default function TopBar() {

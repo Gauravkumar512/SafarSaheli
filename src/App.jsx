@@ -10,6 +10,7 @@ import Leaderboard from './pages/Leaderboard';
 import Profile from './pages/Profile';
 import Saheli from './pages/Saheli';
 import RootLayout from './navigation/RootLayout';
+import SafetyRoutes from './pages/SafetyRoutes';
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
             <Route path="/home" element={<Home />} />
             <Route path="/trip" element={<TripPlanner />} />
             <Route path="/safety" element={<Safety />} />
+            <Route path="/routes" element={<SafetyRoutes />} />
             <Route path="/sos" element={<SOS />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/saheli" element={<Saheli />} />
