@@ -86,7 +86,7 @@ export default function SOS() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-pink-50 to-red-50">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-white">
       <div className="mx-auto max-w-6xl p-4 sm:p-6 lg:p-8 pb-28">
         {/* Header */}
         <div className="mb-6 sm:mb-10">
@@ -95,7 +95,7 @@ export default function SOS() {
         </div>
 
         {/* SOS Button Card */}
-        <div className="rounded-3xl border border-white/40 bg-white/80 p-8 shadow-xl backdrop-blur-sm mb-8 text-center">
+        <div className="rounded-3xl border border-pink-200 bg-white p-8 shadow-md mb-8 text-center">
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Emergency Alert</h2>
             <p className="text-gray-600">Press the button below to send your location to emergency contacts</p>
@@ -106,8 +106,8 @@ export default function SOS() {
             disabled={alertActive}
             className={`relative w-48 h-48 rounded-full text-white font-bold text-2xl transition-all duration-300 transform ${
               alertActive 
-                ? 'bg-red-600 scale-95 shadow-inner' 
-                : 'bg-gradient-to-br from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 hover:scale-105'
+                ? 'bg-pink-500 scale-95 shadow-inner' 
+                : 'bg-pink-500 hover:bg-pink-600 hover:scale-105'
             } disabled:cursor-not-allowed shadow-2xl hover:shadow-3xl`}
           >
             {alertActive ? (
@@ -121,14 +121,14 @@ export default function SOS() {
           </button>
 
           {msg && (
-            <div className="mt-6 p-4 bg-red-100 border-2 border-red-300 rounded-2xl text-red-800 font-semibold animate-pulse">
+            <div className="mt-6 p-4 bg-pink-100 border-2 border-pink-300 rounded-2xl text-pink-700 font-semibold animate-pulse">
               {msg}
             </div>
           )}
         </div>
 
         {/* Emergency Contacts Card */}
-        <div className="rounded-3xl border border-white/40 bg-white/80 p-8 shadow-xl backdrop-blur-sm mb-8">
+        <div className="rounded-3xl border border-pink-200 bg-white p-8 shadow-md mb-8">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-xl font-bold text-gray-900">Emergency Contacts</h3>
@@ -144,7 +144,7 @@ export default function SOS() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Enter name"
-                className="rounded-xl border-2 border-gray-200 p-3 text-gray-900 outline-none transition focus:border-rose-500 focus:ring-4 focus:ring-rose-100"
+                className="rounded-xl border-2 border-pink-200 p-3 text-gray-900 outline-none transition focus:border-pink-300 focus:ring-4 focus:ring-pink-100"
                 required
               />
             </div>
@@ -154,7 +154,7 @@ export default function SOS() {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Enter phone"
-                className="rounded-xl border-2 border-gray-200 p-3 text-gray-900 outline-none transition focus:border-rose-500 focus:ring-4 focus:ring-rose-100"
+                className="rounded-xl border-2 border-pink-200 p-3 text-gray-900 outline-none transition focus:border-pink-300 focus:ring-4 focus:ring-pink-100"
                 type="tel"
                 required
               />
@@ -162,7 +162,7 @@ export default function SOS() {
             <div className="flex items-end">
               <button
                 type="submit"
-                className="w-full rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 py-3 font-semibold text-white shadow-lg transition hover:from-rose-600 hover:to-pink-600 hover:shadow-xl"
+                className="w-full rounded-xl bg-pink-500 py-3 font-semibold text-white shadow-md transition hover:bg-pink-600 hover:shadow-lg"
               >
                 Add Contact
               </button>
@@ -174,7 +174,7 @@ export default function SOS() {
             {contacts.map((contact, index) => (
               <div
                 key={contact.id}
-                className="group rounded-2xl border border-gray-200 bg-gray-50 p-4 transition hover:bg-gray-100 hover:shadow-md"
+                className="group rounded-2xl border border-pink-200 bg-white p-4 transition hover:bg-pink-50 hover:shadow-md"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 <div className="flex items-center justify-between">
@@ -214,13 +214,12 @@ export default function SOS() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="rounded-2xl border border-white/40 bg-white/80 p-6 shadow-lg backdrop-blur-sm transition hover:shadow-xl">
-            <div className="font-semibold text-gray-900">Police</div>
+          <div className="rounded-2xl border border-pink-200 bg-white p-6 shadow-md transition hover:shadow-lg">
+            <div className="font-semibold text-pink-700">Police</div>
             <div className="text-sm text-gray-600">Call 100</div>
           </div>
-          
-          <div className="rounded-2xl border border-white/40 bg-white/80 p-6 shadow-lg backdrop-blur-sm transition hover:shadow-xl">
-            <div className="font-semibold text-gray-900">Medical</div>
+          <div className="rounded-2xl border border-pink-200 bg-white p-6 shadow-md transition hover:shadow-lg">
+            <div className="font-semibold text-pink-700">Medical</div>
             <div className="text-sm text-gray-600">Call 108</div>
           </div>
         </div>

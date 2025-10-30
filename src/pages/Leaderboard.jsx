@@ -12,12 +12,12 @@ export default function Leaderboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-white">
       <div className="p-6 pb-24 max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center space-x-3 mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-500 rounded-2xl flex items-center justify-center text-white">
+            <div className="w-12 h-12 bg-pink-100 rounded-2xl flex items-center justify-center text-pink-600">
               <FiAward />
             </div>
             <div>
@@ -28,7 +28,7 @@ export default function Leaderboard() {
         </div>
 
         {/* Top Contributor Card */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 overflow-hidden mb-8">
+        <div className="bg-white rounded-3xl shadow-md border border-pink-200 overflow-hidden mb-8">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-xl font-bold text-gray-900">Top Contributor</h2>
             <p className="text-gray-600">Recognizing the highest points earner</p>
@@ -37,7 +37,7 @@ export default function Leaderboard() {
             <div className="p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br ${getRankColor(0)}`}>
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white bg-pink-500">
                     <FiAward />
                   </div>
                   <div>
@@ -46,7 +46,7 @@ export default function Leaderboard() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-3xl font-extrabold text-purple-600">{sorted[0].points}</div>
+                  <div className="text-3xl font-extrabold text-pink-600">{sorted[0].points}</div>
                   <div className="text-sm text-gray-500">points</div>
                 </div>
               </div>
@@ -57,7 +57,7 @@ export default function Leaderboard() {
         </div>
 
         {/* Compact Top 10 List */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 overflow-hidden">
+        <div className="bg-white rounded-3xl shadow-md border border-pink-200 overflow-hidden">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-xl font-bold text-gray-900">Top 10</h2>
           </div>
@@ -65,10 +65,10 @@ export default function Leaderboard() {
             {sorted.slice(0, 10).map((user, index) => (
               <div key={user.id} className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white bg-gradient-to-br ${getRankColor(index)}`}>{index + 1}</div>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center text-pink-500 bg-pink-50 border border-pink-200">{index + 1}</div>
                   <div className="font-semibold text-gray-900">{user.name}</div>
                 </div>
-                <div className="text-purple-600 font-bold">{user.points}</div>
+                <div className="text-pink-600 font-bold">{user.points}</div>
               </div>
             ))}
           </div>

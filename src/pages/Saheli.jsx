@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { chatWithGemini } from '../services/ai';
-import BottomNav from '../components/BottomNav';
 
 export default function Saheli() {
   const [messages, setMessages] = useState([
@@ -38,7 +37,7 @@ export default function Saheli() {
   }
 
   return (
-    <div className="pb-20">
+    <div>
       <div className="mx-auto max-w-3xl px-4 py-6">
         <div className="mb-4 rounded-2xl border border-pink-200 bg-pink-50/60 p-4">
           <h1 className="text-xl font-bold text-pink-700">Saheli</h1>
@@ -81,8 +80,6 @@ export default function Saheli() {
           </form>
         </div>
       </div>
-
-      <BottomNav />
     </div>
   );
 }
