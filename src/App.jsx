@@ -8,6 +8,7 @@ import Safety from './pages/Safety';
 import SOS from './pages/SOS';
 import Leaderboard from './pages/Leaderboard';
 import Profile from './pages/Profile';
+import Saheli from './pages/Saheli';
 import RootLayout from './navigation/RootLayout';
 
 export default function App() {
@@ -23,6 +24,7 @@ export default function App() {
             <Route path="/safety" element={<Safety />} />
             <Route path="/sos" element={<SOS />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/saheli" element={<Saheli />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="*" element={<Home />} />
           </Route>
