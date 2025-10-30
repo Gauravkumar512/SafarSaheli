@@ -122,12 +122,12 @@ export default function TripPlanner() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-white">
       <div className="mx-auto max-w-6xl p-4 sm:p-6 lg:p-8 pb-28">
         {/* Header */}
         <div className="mb-6 sm:mb-10">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 text-2xl">✈️</div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-pink-100 text-2xl text-pink-700">✈️</div>
             <div>
               <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900">AI Trip Planner</h1>
               <p className="mt-1 text-gray-600">Get your personalized travel itinerary in minutes</p>
@@ -136,7 +136,7 @@ export default function TripPlanner() {
         </div>
 
         {/* Planner Card */}
-        <div className="rounded-3xl border border-white/40 bg-white/80 p-5 sm:p-8 shadow-xl backdrop-blur-sm">
+        <div className="rounded-3xl border border-pink-200 bg-white p-5 sm:p-8 shadow-md">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Inputs Row */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -148,7 +148,7 @@ export default function TripPlanner() {
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
                   placeholder="e.g., Agra, Jaipur, Goa"
-                  className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-gray-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  className="w-full rounded-xl border-2 border-pink-200 px-4 py-3 text-gray-900 outline-none transition focus:border-pink-400 focus:ring-4 focus:ring-pink-100"
                 />
               </label>
 
@@ -161,7 +161,7 @@ export default function TripPlanner() {
                   min={1}
                   value={daysText}
                   onChange={(e) => setDaysText(e.target.value)}
-                  className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-gray-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  className="w-full rounded-xl border-2 border-pink-200 px-4 py-3 text-gray-900 outline-none transition focus:border-pink-400 focus:ring-4 focus:ring-pink-100"
                 />
               </label>
 
@@ -175,7 +175,7 @@ export default function TripPlanner() {
                   step={500}
                   value={budgetText}
                   onChange={(e) => setBudgetText(e.target.value)}
-                  className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-gray-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  className="w-full rounded-xl border-2 border-pink-200 px-4 py-3 text-gray-900 outline-none transition focus:border-pink-400 focus:ring-4 focus:ring-pink-100"
                 />
               </label>
 
@@ -184,7 +184,7 @@ export default function TripPlanner() {
                 <select
                   value={style}
                   onChange={(e) => setStyle(e.target.value)}
-                  className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-gray-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  className="w-full rounded-xl border-2 border-pink-200 px-4 py-3 text-gray-900 outline-none transition focus:border-pink-400 focus:ring-4 focus:ring-pink-100"
                 >
                   {allStyles.map((s) => (
                     <option key={s}>{s}</option>
@@ -204,8 +204,8 @@ export default function TripPlanner() {
                     onClick={() => setStyle(s)}
                     className={`rounded-xl border px-4 py-2 text-sm font-medium transition ${
                       style === s
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                        ? 'border-pink-500 bg-pink-50 text-pink-700'
+                        : 'border-pink-200 bg-white text-gray-700 hover:bg-pink-50'
                     }`}
                   >
                     {s}
@@ -238,7 +238,7 @@ export default function TripPlanner() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 py-4 font-semibold text-white shadow-lg transition hover:from-blue-600 hover:to-cyan-600 focus:outline-none focus:ring-4 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-xl bg-pink-500 py-4 font-semibold text-white shadow-md transition hover:bg-pink-600 focus:outline-none focus:ring-4 focus:ring-pink-200 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? 'Generating itinerary…' : 'Generate Trip Plan'}
             </button>
@@ -333,7 +333,7 @@ export default function TripPlanner() {
                 <div className="mb-3 flex items-start justify-between">
                   <div>
                     <h3 className="text-xl font-bold text-gray-900">{trip.title}</h3>
-                    <div className="text-blue-600">{trip.destination}</div>
+                    <div className="text-pink-600">{trip.destination}</div>
                   </div>
                   <div className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-3 py-1 text-sm font-semibold text-yellow-800">
                     <FiStar /> {trip.rating}
