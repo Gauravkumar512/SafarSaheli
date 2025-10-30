@@ -19,13 +19,14 @@ const categories = [
   { type: 'washroom', icon: '🚻', name: 'Washroom', overpass: 'amenity=toilets' }
 ];
 
+// 🔍 Using a 10 km radius now
 function getOverpassQuery({ lat, lng }, kv) {
   return `
-    [out:json][timeout:15];
+    [out:json][timeout:25];
     (
-      node[${kv}](${lat - 0.018},${lng - 0.018},${lat + 0.018},${lng + 0.018});
-      way[${kv}](${lat - 0.018},${lng - 0.018},${lat + 0.018},${lng + 0.018});
-      rel[${kv}](${lat - 0.018},${lng - 0.018},${lat + 0.018},${lng + 0.018});
+      node[${kv}](around:10000,${lat},${lng});
+      way[${kv}](around:10000,${lat},${lng});
+      rel[${kv}](around:10000,${lat},${lng});
     );
     out center;
   `;
@@ -75,7 +76,6 @@ export default function GoogleMap() {
     }
   }
 
-  // Fetch OSM data via Overpass
   useEffect(() => {
     if (!activeCat || !center) return;
     setLoading(true);
@@ -84,6 +84,7 @@ export default function GoogleMap() {
     if (!catData) return;
     const url = 'https://overpass-api.de/api/interpreter';
     const body = getOverpassQuery(center, catData.overpass);
+
     fetch(url, { method: 'POST', body })
       .then(r => r.json())
       .then(data => {
@@ -92,11 +93,11 @@ export default function GoogleMap() {
           lat: e.lat || e.center?.lat,
           lng: e.lon || e.center?.lon,
           tags: e.tags || {},
-        })).filter(e => e.lat && e.lng).slice(0, 20);
+        })).filter(e => e.lat && e.lng).slice(0, 50); // increased max results
         setPlaces(ps => ({ ...ps, [activeCat]: locs }));
         setLoading(false);
       })
-      .catch(e => {
+      .catch(() => {
         setError('Could not fetch locations. Try refreshing or check your connection.');
         setLoading(false);
       });
@@ -165,7 +166,6 @@ export default function GoogleMap() {
           )}
         </div>
       </div>
-      {/* List results for active category */}
       {activeCat && center && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {loading && <div className="text-center text-pink-500 py-12">Searching nearby places...</div>}

@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { FiMapPin, FiShield, FiBell, FiAward, FiUser, FiMessageSquare, FiBookmark } from 'react-icons/fi';
+import { FaCompass } from 'react-icons/fa';
 
 export default function Home() {
   const { loggedInUser } = useApp();
   const cards = [
+    { to: '/routes', title: 'Safety Routes', subtitle: 'See safest paths', icon: FaCompass },
     { to: '/trip', title: 'Trip Planner', subtitle: 'Plan your journey', icon: FiMapPin },
     { to: '/safety', title: 'Safety & Hygiene', subtitle: 'Find safe places', icon: FiShield },
     { to: '/sos', title: 'SOS', subtitle: 'Emergency help', icon: FiBell },
