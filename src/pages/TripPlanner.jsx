@@ -30,8 +30,6 @@ export default function TripPlanner() {
   const allStyles = ['Mid-Range', 'Luxury', 'Homestay'];
   const allInterests = ['Adventure', 'Culture', 'Food', 'Nature', 'Shopping', 'Relaxation', 'History', 'Art', 'Photography', 'Wildlife'];
 
-  const suggestions = demoTrips.filter(t => !destination || t.destination.toLowerCase().includes(destination.toLowerCase()));
-
   const toggleInterest = (i) => {
     setInterests(prev => prev.includes(i) ? prev.filter(x => x !== i) : prev.concat(i));
   };
@@ -323,49 +321,6 @@ export default function TripPlanner() {
               </div>
             )
           )}
-          <h2 className="mb-4 text-2xl font-bold text-gray-900">Suggested Trips</h2>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            {suggestions.map((trip) => (
-              <div
-                key={trip.id}
-                className="overflow-hidden rounded-3xl border border-white/40 bg-white/80 p-5 shadow-lg backdrop-blur-sm transition hover:shadow-2xl"
-              >
-                <div className="mb-3 flex items-start justify-between">
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900">{trip.title}</h3>
-                    <div className="text-pink-600">{trip.destination}</div>
-                  </div>
-                  <div className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-3 py-1 text-sm font-semibold text-yellow-800">
-                    <FiStar /> {trip.rating}
-                  </div>
-                </div>
-
-                <div className="mb-3 grid grid-cols-2 gap-3 text-sm text-gray-600 sm:grid-cols-4">
-                  <div className="inline-flex items-center gap-2"><FiCalendar /> <span>{trip.days} days</span></div>
-                  <div className="inline-flex items-center gap-2"><FiDollarSign /> <span>{trip.budget}</span></div>
-                  <div className="inline-flex items-center gap-2"><FiUsers /> <span>{trip.crowd || '—'}</span></div>
-                  <div className="inline-flex items-center gap-2"><FiMapPin /> <span>India</span></div>
-                </div>
-
-                <p className="mb-4 text-sm leading-relaxed text-gray-600">{trip.description}</p>
-
-                <div className="flex gap-3">
-                  <button className="flex-1 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 py-3 font-semibold text-white shadow-md transition hover:from-blue-600 hover:to-cyan-600">
-                    View Details
-                  </button>
-                  <button className="rounded-xl bg-gray-100 px-4 py-3 text-gray-700 transition hover:bg-gray-200">
-                    <FiBookmark />
-                  </button>
-                </div>
-              </div>
-            ))}
-
-            {!suggestions.length && (
-              <div className="col-span-full rounded-3xl border border-dashed border-gray-300 bg-white/70 p-10 text-center text-gray-600">
-                No trips found. Try searching for a different destination.
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </div>
