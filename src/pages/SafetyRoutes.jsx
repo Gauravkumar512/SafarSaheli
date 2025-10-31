@@ -72,9 +72,13 @@ export default function SafetyRoutes() {
   const [destSug, setDestSug] = useState([]);
   const startDebRef = useRef(null);
   const destDebRef = useRef(null);
-  const [routeInfo, setRouteInfo] = useState(null); // {distanceKm, durationMin}
+  const [routeInfo, setRouteInfo] = useState(null); // {distanceKm, durationMin, safetyScore}
   const [lastStart, setLastStart] = useState(null); // {lat,lng}
   const [lastEnd, setLastEnd] = useState(null);     // {lat,lng}
+  const [safetyScore, setSafetyScore] = useState(null); // Safety score (0-100)
+  
+  // Backend API URL (change to production URL in deployment)
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
 
   // Initialize MapLibre map with Geoapify style
   useEffect(() => {
@@ -147,73 +151,183 @@ export default function SafetyRoutes() {
     setLastEnd(null);
   }
 
+  /**
+   * Get route color based on safety score.
+   * Green = safe (70+), Yellow = moderate (40-69), Red = unsafe (<40)
+   */
+  function getRouteColor(score) {
+    if (score >= 70) return '#10b981'; // Green - safe
+    if (score >= 40) return '#eab308'; // Yellow - moderate
+    return '#ef4444'; // Red - unsafe
+  }
+
   async function handleJourney() {
     setErrorMsg('');
     if (!startVal || !destVal) { setErrorMsg('Please enter start and destination.'); return; }
     clearMapArtifacts();
     try {
+      // Geocode start and destination
       const [start, end] = await Promise.all([geocode(startVal), geocode(destVal)]);
       setStartCoord(start);
       setEndCoord(end);
       const map = mapInstanceRef.current;
       if (!map) return;
-      async function fetchRoute(mode) {
-        const url = `https://api.geoapify.com/v1/routing?waypoints=${start.lat}%2C${start.lng}%7C${end.lat}%2C${end.lng}&mode=${mode}&apiKey=${apiKey}`;
-        const res = await fetch(url);
-        if (!res.ok) return null;
-        const d = await res.json();
-        return d?.features?.[0]?.geometry ? d : null;
-      }
-      let data = await fetchRoute('drive,safe');
-      if (!data) data = await fetchRoute('drive');
-      if (!data) { setErrorMsg('No route found.'); return; }
-      const geom = data.features[0].geometry;
-      // Extract distance/time if present
-      const props = data.features[0].properties || {};
-      const distanceM = props.distance ?? props?.summary?.distance ?? props?.legs?.[0]?.distance;
-      const durationS = props.time ?? props?.summary?.duration ?? props?.legs?.[0]?.duration;
-      const info = {
-        distanceKm: typeof distanceM === 'number' ? (distanceM / 1000) : null,
-        durationMin: typeof durationS === 'number' ? (durationS / 60) : null,
-      };
-      const flattened = geom.type === 'MultiLineString'
-        ? (geom.coordinates || []).flat(1).map(([lon, lat]) => [lat, lon])
-        : (geom.coordinates || []).map(([lon, lat]) => [lat, lon]);
-      if (flattened.length === 0) { setErrorMsg('Empty route.'); return; }
-      setGeoRoute(flattened);
-
-      const addRoute = () => {
-        const lineCoords = flattened.map(([lat, lng]) => [lng, lat]);
-        const lineGeoJSON = { type: 'Feature', geometry: { type: 'LineString', coordinates: lineCoords }, properties: {} };
-        if (map.getSource(routeSourceIdRef.current)) {
-          map.getSource(routeSourceIdRef.current).setData(lineGeoJSON);
-        } else {
-          map.addSource(routeSourceIdRef.current, { type: 'geojson', data: lineGeoJSON });
-          if (!map.getLayer('route-line')) {
-            // ROUTE DRAWING LOGIC (MapLibre layer)
-            map.addLayer({ id: 'route-line', type: 'line', source: routeSourceIdRef.current, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#2563eb', 'line-width': 6 } });
-          }
+      
+      // Call backend API for safest route
+      try {
+        const backendResponse = await fetch(`${BACKEND_URL}/safest-route`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            start: [start.lat, start.lng],
+            end: [end.lat, end.lng]
+          })
+        });
+        
+        if (!backendResponse.ok) {
+          throw new Error(`Backend API error: ${backendResponse.statusText}`);
         }
-        const lngs = lineCoords.map(c => c[0]);
-        const lats = lineCoords.map(c => c[1]);
-        map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], { padding: 60, linear: true });
+        
+        const backendData = await backendResponse.json();
+        
+        // Extract route data from backend response
+        const route = backendData.route || [];
+        const safetyScore = backendData.safety_score || 50;
+        const distanceKm = backendData.distance_km || null;
+        const durationMin = backendData.duration_min || null;
+        
+        if (route.length === 0) {
+          setErrorMsg('No route found from backend.');
+          return;
+        }
+        
+        // Use the route from backend (already in [lat, lng] format)
+        const flattened = route;
+        setGeoRoute(flattened);
+        setSafetyScore(safetyScore);
+        
+        const info = {
+          distanceKm: distanceKm,
+          durationMin: durationMin,
+          safetyScore: safetyScore
+        };
 
-        // Markers: green start, red end
-        const green = document.createElement('div'); green.style.cssText = 'width:14px;height:14px;border-radius:50%;background:#10b981;border:2px solid #fff;box-shadow:0 0 0 2px #10b981';
-        const red = document.createElement('div');   red.style.cssText   = 'width:14px;height:14px;border-radius:50%;background:#ef4444;border:2px solid #fff;box-shadow:0 0 0 2px #ef4444';
-        startMarkerRef.current = new maplibregl.Marker({ element: green, anchor: 'center' }).setLngLat([start.lng, start.lat]).addTo(map);
-        endMarkerRef.current   = new maplibregl.Marker({ element: red,   anchor: 'center' }).setLngLat([end.lng, end.lat]).addTo(map);
-        // Save for Open in Maps button and info
-        setLastStart(start);
-        setLastEnd(end);
-        setRouteInfo(info);
-      };
+        const addRoute = () => {
+          const lineCoords = flattened.map(([lat, lng]) => [lng, lat]);
+          const lineGeoJSON = { type: 'Feature', geometry: { type: 'LineString', coordinates: lineCoords }, properties: {} };
+          
+          // Determine route color based on safety score
+          const routeColor = getRouteColor(safetyScore);
+          
+          if (map.getSource(routeSourceIdRef.current)) {
+            map.getSource(routeSourceIdRef.current).setData(lineGeoJSON);
+            // Update color if layer exists
+            if (map.getLayer('route-line')) {
+              map.setPaintProperty('route-line', 'line-color', routeColor);
+            }
+          } else {
+            map.addSource(routeSourceIdRef.current, { type: 'geojson', data: lineGeoJSON });
+            if (!map.getLayer('route-line')) {
+              // ROUTE DRAWING LOGIC (MapLibre layer) - Color coded by safety
+              map.addLayer({ 
+                id: 'route-line', 
+                type: 'line', 
+                source: routeSourceIdRef.current, 
+                layout: { 
+                  'line-join': 'round', 
+                  'line-cap': 'round' 
+                }, 
+                paint: { 
+                  'line-color': routeColor, 
+                  'line-width': 6 
+                } 
+              });
+            }
+          }
+          const lngs = lineCoords.map(c => c[0]);
+          const lats = lineCoords.map(c => c[1]);
+          map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], { padding: 60, linear: true });
 
-      if (mapReady || (map && map.isStyleLoaded && map.isStyleLoaded())) {
-        addRoute();
-      } else {
-        const once = () => { addRoute(); map.off('load', once); };
-        map.on('load', once);
+          // Markers: green start, red end
+          const green = document.createElement('div'); green.style.cssText = 'width:14px;height:14px;border-radius:50%;background:#10b981;border:2px solid #fff;box-shadow:0 0 0 2px #10b981';
+          const red = document.createElement('div');   red.style.cssText   = 'width:14px;height:14px;border-radius:50%;background:#ef4444;border:2px solid #fff;box-shadow:0 0 0 2px #ef4444';
+          startMarkerRef.current = new maplibregl.Marker({ element: green, anchor: 'center' }).setLngLat([start.lng, start.lat]).addTo(map);
+          endMarkerRef.current   = new maplibregl.Marker({ element: red,   anchor: 'center' }).setLngLat([end.lng, end.lat]).addTo(map);
+          // Save for Open in Maps button and info
+          setLastStart(start);
+          setLastEnd(end);
+          setRouteInfo(info);
+        };
+
+        if (mapReady || (map && map.isStyleLoaded && map.isStyleLoaded())) {
+          addRoute();
+        } else {
+          const once = () => { addRoute(); map.off('load', once); };
+          map.on('load', once);
+        }
+      } catch (backendError) {
+        // Fallback to direct Geoapify if backend fails
+        console.warn('[SafetyRoutes] Backend API failed, falling back to Geoapify:', backendError);
+        setErrorMsg(`Backend unavailable: ${backendError.message}. Using fallback route.`);
+        
+        // Fallback: use Geoapify directly (shortest route)
+        async function fetchRoute(mode) {
+          const url = `https://api.geoapify.com/v1/routing?waypoints=${start.lat}%2C${start.lng}%7C${end.lat}%2C${end.lng}&mode=${mode}&apiKey=${apiKey}`;
+          const res = await fetch(url);
+          if (!res.ok) return null;
+          const d = await res.json();
+          return d?.features?.[0]?.geometry ? d : null;
+        }
+        let data = await fetchRoute('drive,safe');
+        if (!data) data = await fetchRoute('drive');
+        if (!data) { setErrorMsg('No route found.'); return; }
+        const geom = data.features[0].geometry;
+        const props = data.features[0].properties || {};
+        const distanceM = props.distance ?? props?.summary?.distance ?? props?.legs?.[0]?.distance;
+        const durationS = props.time ?? props?.summary?.duration ?? props?.legs?.[0]?.duration;
+        const info = {
+          distanceKm: typeof distanceM === 'number' ? (distanceM / 1000) : null,
+          durationMin: typeof durationS === 'number' ? (durationS / 60) : null,
+          safetyScore: null // No safety score in fallback
+        };
+        const flattened = geom.type === 'MultiLineString'
+          ? (geom.coordinates || []).flat(1).map(([lon, lat]) => [lat, lon])
+          : (geom.coordinates || []).map(([lon, lat]) => [lat, lon]);
+        if (flattened.length === 0) { setErrorMsg('Empty route.'); return; }
+        setGeoRoute(flattened);
+        setSafetyScore(null);
+        
+        const addRoute = () => {
+          const lineCoords = flattened.map(([lat, lng]) => [lng, lat]);
+          const lineGeoJSON = { type: 'Feature', geometry: { type: 'LineString', coordinates: lineCoords }, properties: {} };
+          if (map.getSource(routeSourceIdRef.current)) {
+            map.getSource(routeSourceIdRef.current).setData(lineGeoJSON);
+          } else {
+            map.addSource(routeSourceIdRef.current, { type: 'geojson', data: lineGeoJSON });
+            if (!map.getLayer('route-line')) {
+              map.addLayer({ id: 'route-line', type: 'line', source: routeSourceIdRef.current, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#2563eb', 'line-width': 6 } });
+            }
+          }
+          const lngs = lineCoords.map(c => c[0]);
+          const lats = lineCoords.map(c => c[1]);
+          map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], { padding: 60, linear: true });
+          const green = document.createElement('div'); green.style.cssText = 'width:14px;height:14px;border-radius:50%;background:#10b981;border:2px solid #fff;box-shadow:0 0 0 2px #10b981';
+          const red = document.createElement('div');   red.style.cssText   = 'width:14px;height:14px;border-radius:50%;background:#ef4444;border:2px solid #fff;box-shadow:0 0 0 2px #ef4444';
+          startMarkerRef.current = new maplibregl.Marker({ element: green, anchor: 'center' }).setLngLat([start.lng, start.lat]).addTo(map);
+          endMarkerRef.current   = new maplibregl.Marker({ element: red,   anchor: 'center' }).setLngLat([end.lng, end.lat]).addTo(map);
+          setLastStart(start);
+          setLastEnd(end);
+          setRouteInfo(info);
+        };
+        
+        if (mapReady || (map && map.isStyleLoaded && map.isStyleLoaded())) {
+          addRoute();
+        } else {
+          const once = () => { addRoute(); map.off('load', once); };
+          map.on('load', once);
+        }
       }
     } catch (e) {
       setErrorMsg(e.message || 'Failed to build route.');
@@ -314,18 +428,26 @@ export default function SafetyRoutes() {
         {/* Route info + Google Maps button */}
         <div id="routeInfo" className="mt-3">
           {routeInfo && (
-            <div className="flex items-center justify-between rounded-xl border border-pink-200 bg-white px-4 py-3">
-              <div className="text-sm text-gray-800">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl border border-pink-200 bg-white px-4 py-3">
+              <div className="text-sm text-gray-800 flex flex-wrap gap-3">
                 {routeInfo.distanceKm != null && (
-                  <span className="mr-4">Distance: {routeInfo.distanceKm.toFixed(1)} km</span>
+                  <span>Distance: {routeInfo.distanceKm.toFixed(1)} km</span>
                 )}
                 {routeInfo.durationMin != null && (
                   <span>Time: {Math.round(routeInfo.durationMin)} min</span>
                 )}
+                {routeInfo.safetyScore != null && (
+                  <span className={`font-semibold ${
+                    routeInfo.safetyScore >= 70 ? 'text-green-600' :
+                    routeInfo.safetyScore >= 40 ? 'text-yellow-600' : 'text-red-600'
+                  }`}>
+                    Safety: {routeInfo.safetyScore.toFixed(1)}/100
+                  </span>
+                )}
               </div>
               {lastStart && lastEnd && (
                 <button
-                  className="rounded-lg px-4 py-2 bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
+                  className="rounded-lg px-4 py-2 bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 whitespace-nowrap"
                   onClick={() => {
                     // GOOGLE MAPS REDIRECT HANDLER
                     const url = `https://www.google.com/maps/dir/?api=1&origin=${lastStart.lat},${lastStart.lng}&destination=${lastEnd.lat},${lastEnd.lng}&travelmode=driving`;
