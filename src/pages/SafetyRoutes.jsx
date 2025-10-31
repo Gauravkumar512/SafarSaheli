@@ -78,7 +78,14 @@ export default function SafetyRoutes() {
   const [safetyScore, setSafetyScore] = useState(null); // Safety score (0-100)
   
   // Backend API URL (change to production URL in deployment)
+  // For ngrok: Set VITE_BACKEND_URL in .env file (e.g., VITE_BACKEND_URL=https://xxxx.ngrok.io)
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+  
+  // Debug: Log backend URL being used (only in dev mode)
+  useEffect(() => {
+    console.log('[SafetyRoutes] Backend URL:', BACKEND_URL);
+    console.log('[SafetyRoutes] VITE_BACKEND_URL from env:', import.meta.env.VITE_BACKEND_URL);
+  }, []);
 
   // Initialize MapLibre map with Geoapify style
   useEffect(() => {
@@ -175,11 +182,19 @@ export default function SafetyRoutes() {
       
       // Call backend API for safest route
       try {
+        // Prepare headers (add ngrok bypass header if needed)
+        const headers = {
+          'Content-Type': 'application/json',
+        };
+        
+        // Add ngrok bypass header if using ngrok
+        if (BACKEND_URL.includes('ngrok')) {
+          headers['ngrok-skip-browser-warning'] = 'true';
+        }
+        
         const backendResponse = await fetch(`${BACKEND_URL}/safest-route`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: headers,
           body: JSON.stringify({
             start: [start.lat, start.lng],
             end: [end.lat, end.lng]
