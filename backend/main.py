@@ -1,12 +1,5 @@
 """
 FastAPI Backend for SafarSaheli - Women's Safety Route Planner
-
-This backend integrates with the existing ML model (KMeans clustering)
-to provide safety-scored route recommendations based on crime data.
-
-Main Endpoints:
-- POST /safest-route: Returns the safest route between two points
-- POST /sos: Mock SOS endpoint for emergency location tracking
 """
 
 from fastapi import FastAPI, HTTPException
@@ -21,52 +14,18 @@ from sklearn.cluster import KMeans
 import os
 import sys
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-
-app = FastAPI()
-
-# ✅ Allow frontend access
-origins = [
-    "http://localhost:5173",  # default Vite dev port
-    "http://localhost:5174",
-    "http://localhost:5175",  # your current frontend port
-    "https://rd-34qsvbWViJh4nxaLJDz3lYEPy79.ngrok-free.app",  # backend domain itself (optional)
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,       # or use ["*"] for testing
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# --- Your existing routes below ---
-@app.get("/")
-def read_root():
-    return {"message": "Hello from FastAPI!"}
-
-
-
-
-# Import our ML utilities (ml_service.py is in the same backend directory)
+# Import ML utilities
 from ml_service import MLModelService
 
-# Global ML service instance (loaded once on startup)
+# Global ML service instance
 ml_service: MLModelService = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Load ML model and crime data on server startup.
-    This ensures the model is ready before handling requests.
-    """
-    # Startup
+    """Load ML model on startup"""
     global ml_service
     try:
-        # Get the root directory (parent of backend)
         root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         crime_csv_path = os.path.join(root_dir, "crime.csv")
         
@@ -80,12 +39,9 @@ async def lifespan(app: FastAPI):
         raise
     
     yield
-    
-    # Shutdown (if needed)
-    pass
 
 
-# Initialize FastAPI app with lifespan
+# Initialize FastAPI app ONCE
 app = FastAPI(
     title="SafarSaheli Backend API",
     description="AI-powered safety route planner for women's safety",
@@ -93,15 +49,15 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configure CORS to allow frontend requests
-# Allow localhost, ngrok, and all origins (for PWA/mobile testing)
+# Configure CORS ONCE - Allow all origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for ngrok/mobile testing
+    allow_origins=["*"],  # Allow all origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # Request/Response Models
 class RouteRequest(BaseModel):
@@ -150,20 +106,7 @@ async def health():
 
 @app.post("/safest-route", response_model=RouteResponse)
 async def get_safest_route(request: RouteRequest):
-    """
-    Find the safest route between start and end coordinates.
-    
-    Algorithm:
-    1. Fetch multiple route options from Geoapify API
-    2. Score each route based on proximity to high-risk crime clusters
-    3. Return the route with the lowest cumulative risk score
-    
-    Args:
-        request: RouteRequest with start [lat, lng] and end [lat, lng]
-    
-    Returns:
-        RouteResponse with safest route coordinates and metadata
-    """
+    """Find the safest route between start and end coordinates"""
     if ml_service is None:
         raise HTTPException(status_code=503, detail="ML model not loaded")
     
@@ -172,11 +115,6 @@ async def get_safest_route(request: RouteRequest):
     
     start_lat, start_lng = request.start[0], request.start[1]
     end_lat, end_lng = request.end[0], request.end[1]
-    
-    # NOTE: Model is trained on Delhi crime data, so scoring will be most accurate for Delhi region
-    # Coordinate validation removed to allow other cities, but accuracy may be limited
-    # For Delhi: ~28.4-28.9 lat, 76.8-77.4 lng
-    # For best results, use coordinates within Delhi region
     
     try:
         # Get multiple route options from Geoapify
@@ -194,7 +132,7 @@ async def get_safest_route(request: RouteRequest):
                 "safety_score": safety_score
             })
         
-        # Select route with highest safety score (lowest risk)
+        # Select route with highest safety score
         safest_route = max(scored_routes, key=lambda r: r["safety_score"])
         
         return RouteResponse(
@@ -213,31 +151,14 @@ async def get_safest_route(request: RouteRequest):
 
 @app.post("/sos", response_model=SOSResponse)
 async def trigger_sos(request: SOSRequest):
-    """
-    Mock SOS endpoint for emergency location tracking.
-    
-    In a production system, this would:
-    - Send alerts to emergency contacts
-    - Notify nearby authorities
-    - Track location continuously
-    - Log incident for safety records
-    
-    Args:
-        request: SOSRequest with current location [lat, lng]
-    
-    Returns:
-        SOSResponse confirming SOS activation
-    """
+    """Mock SOS endpoint for emergency location tracking"""
     if len(request.location) != 2:
         raise HTTPException(status_code=400, detail="Invalid location format")
     
     lat, lng = request.location[0], request.location[1]
     
-    # Mock SOS processing
     print(f"[SOS] Emergency triggered at location: {lat}, {lng}")
     print(f"[SOS] Timestamp: {request.timestamp or 'N/A'}")
-    print(f"[SOS] Alert sent to emergency contacts")
-    print(f"[SOS] Nearby authorities notified")
     
     return SOSResponse(
         status="activated",
@@ -249,4 +170,3 @@ async def trigger_sos(request: SOSRequest):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
