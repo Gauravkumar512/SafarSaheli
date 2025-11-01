@@ -78,7 +78,7 @@ export default function SafetyRoutes() {
   const [safetyScore, setSafetyScore] = useState(null); // Safety score (0-100)
   
   // API Base URL from environment variable
-  const API_BASE_URL = "https://unbonneted-finn-nonintrospectively.ngrok-free.dev";
+  const API_BASE_URL = " https://unbonneted-finn-nonintrospectively.ngrok-free.dev";
   
   // Debug: Log API base URL being used (only in dev mode)
   useEffect(() => {
