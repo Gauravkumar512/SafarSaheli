@@ -21,6 +21,35 @@ from sklearn.cluster import KMeans
 import os
 import sys
 
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+# ✅ Allow frontend access
+origins = [
+    "http://localhost:5173",  # default Vite dev port
+    "http://localhost:5174",
+    "http://localhost:5175",  # your current frontend port
+    "https://rd-34qsvbWViJh4nxaLJDz3lYEPy79.ngrok-free.app",  # backend domain itself (optional)
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,       # or use ["*"] for testing
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# --- Your existing routes below ---
+@app.get("/")
+def read_root():
+    return {"message": "Hello from FastAPI!"}
+
+
+
+
 # Import our ML utilities (ml_service.py is in the same backend directory)
 from ml_service import MLModelService
 
