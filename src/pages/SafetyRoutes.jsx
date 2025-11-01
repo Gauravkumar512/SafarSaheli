@@ -188,7 +188,7 @@ export default function SafetyRoutes() {
         
         // Add ngrok bypass header if using ngrok
         if (API_BASE_URL.includes('ngrok')) {
-          headers['ngrok-skip-browser-warning'] = 'true';
+          headers['ngrok-skip-browser-warning'] = '69420';
         }
         
         const backendResponse = await fetch(`${API_BASE_URL}/safest-route`, {
