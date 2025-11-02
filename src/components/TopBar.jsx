@@ -4,11 +4,11 @@ import { FaHome, FaRoute, FaShieldAlt, FaBell, FaTrophy, FaHeart, FaUser, FaComm
 const tabs = [
   { to: '/home', label: 'Home', icon: FaHome },
   { to: '/trip', label: 'Trip Planner', icon: FaRoute },
+  { to: '/routes', label: 'Safety Routes', icon: FaCompass },
   { to: '/safety', label: 'Safety', icon: FaShieldAlt },
   { to: '/sos', label: 'SOS', icon: FaBell },
-  { to: '/leaderboard', label: 'Leaderboard', icon: FaTrophy },
   { to: '/saheli', label: 'Saheli', icon: FaComments },
-  { to: '/routes', label: 'Safety Routes', icon: FaCompass },
+  { to: '/leaderboard', label: 'Leaderboard', icon: FaTrophy },
 ];
 
 export default function TopBar() {
@@ -33,8 +33,7 @@ export default function TopBar() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-3 sm:flex">
-          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700"><FaHeart /> 1250</div>
+        <div className="hidden items-center sm:flex">
           <Link to="/profile" className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 transition-colors">
             <FaUser />
           </Link>
