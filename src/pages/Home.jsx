@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { FiMapPin, FiShield, FiBell, FiAward, FiUser, FiMessageSquare, FiBookmark } from 'react-icons/fi';
+import { FiMapPin, FiShield, FiBell, FiUser, FiMessageSquare, FiBookmark } from 'react-icons/fi';
 import { FaCompass } from 'react-icons/fa';
 
 export default function Home() {
@@ -11,7 +11,6 @@ export default function Home() {
     { to: '/safety', title: 'Safety & Hygiene', subtitle: 'Find safe places', icon: FiShield },
     { to: '/sos', title: 'SOS', subtitle: 'Emergency help', icon: FiBell },
     { to: '/saheli', title: 'Saheli', subtitle: 'AI safety chatbot', icon: FiMessageSquare },
-    { to: '/leaderboard', title: 'Leaderboard', subtitle: 'Community ranking', icon: FiAward },
     { to: '/profile', title: 'Profile', subtitle: 'Your account', icon: FiUser },
   ];
   

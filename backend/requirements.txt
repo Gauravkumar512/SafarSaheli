@@ -21,6 +21,10 @@ aiohttp==3.10.11
 # Pydantic for Data Validation (included with FastAPI)
 pydantic==2.9.2
 
+# SMS Service
+twilio==9.3.0
+python-dotenv==1.0.1
+
 # Python Standard Library (no installation needed)
 # - os, sys, math, typing
 

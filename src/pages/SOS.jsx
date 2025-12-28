@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 const STORAGE_KEY = 'safarsaheli:sosContacts';
+const VEHICLE_KEY = 'safarsaheli:vehicleNumber';
 
 export default function SOS() {
   const [contacts, setContacts] = useState(() => {
@@ -13,12 +14,23 @@ export default function SOS() {
   });
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [vehicleNumber, setVehicleNumber] = useState(() => {
+    try {
+      return localStorage.getItem(VEHICLE_KEY) || '';
+    } catch {
+      return '';
+    }
+  });
   const [msg, setMsg] = useState('');
   const [alertActive, setAlertActive] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(contacts));
   }, [contacts]);
+
+  useEffect(() => {
+    localStorage.setItem(VEHICLE_KEY, vehicleNumber);
+  }, [vehicleNumber]);
 
   const add = (e) => {
     e.preventDefault();
@@ -34,7 +46,7 @@ export default function SOS() {
 
   const sendAlert = () => {
     setAlertActive(true);
-    setMsg('Opening WhatsApp to send alerts...');
+    setMsg('Getting your location...');
 
     const formatPhone = (raw) => {
       if (!raw) return '';
@@ -52,6 +64,23 @@ export default function SOS() {
       window.open(url, '_blank');
     };
 
+    const buildMessage = (locationUrl, hasLocation) => {
+      let message = '🚨 EMERGENCY ALERT from SafarSaheli\n\n';
+      
+      if (hasLocation && locationUrl) {
+        message += `📍 My Location: ${locationUrl}\n`;
+      } else {
+        message += '📍 Location: Unable to get current location. Please call me immediately!\n';
+      }
+      
+      if (vehicleNumber && vehicleNumber.trim()) {
+        message += `🚗 Vehicle Number: ${vehicleNumber.trim()}\n`;
+      }
+      
+      message += '\nPlease help immediately!';
+      return message;
+    };
+
     const notifyAll = (text) => {
       if (!contacts.length) {
         openWhatsApp('', text);
@@ -62,25 +91,41 @@ export default function SOS() {
 
     const complete = () => setTimeout(() => { setMsg(''); setAlertActive(false); }, 1500);
 
+    // Try to get location with better error handling
     if (navigator.geolocation) {
+      setMsg('Getting your location...');
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const { latitude, longitude } = pos.coords;
+          // Create Google Maps link
           const maps = `https://www.google.com/maps?q=${latitude},${longitude}`;
-          const text = `Emergency alert from SafarSaheli. My live location: ${maps}`;
-          notifyAll(text);
+          console.log('Location obtained:', latitude, longitude);
+          console.log('Maps URL:', maps);
+          
+          const message = buildMessage(maps, true);
+          console.log('Message to send:', message);
+          
+          setMsg('Opening WhatsApp...');
+          notifyAll(message);
           complete();
         },
-        () => {
-          const text = 'Emergency alert from SafarSaheli. Please call me immediately.';
-          notifyAll(text);
+        (error) => {
+          console.error('Geolocation error:', error);
+          setMsg('Location access denied. Sending alert without location...');
+          const message = buildMessage('', false);
+          notifyAll(message);
           complete();
         },
-        { enableHighAccuracy: true, timeout: 7000 }
+        { 
+          enableHighAccuracy: true, 
+          timeout: 10000,
+          maximumAge: 0  // Force fresh location
+        }
       );
     } else {
-      const text = 'Emergency alert from SafarSaheli. Please call me immediately.';
-      notifyAll(text);
+      setMsg('Geolocation not supported. Sending alert...');
+      const message = buildMessage('', false);
+      notifyAll(message);
       complete();
     }
   };
@@ -99,6 +144,34 @@ export default function SOS() {
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Emergency Alert</h2>
             <p className="text-gray-600">Press the button below to send your location to emergency contacts</p>
+          </div>
+          
+          {/* Vehicle Number Section */}
+          <div className="mb-6 max-w-md mx-auto">
+            <label className="block text-sm font-semibold text-gray-700 mb-2 text-left">Vehicle Number (Optional)</label>
+            <div className="flex gap-2">
+              <input
+                value={vehicleNumber}
+                onChange={(e) => setVehicleNumber(e.target.value)}
+                placeholder="e.g., DL-01-AB-1234"
+                className="flex-1 rounded-xl border-2 border-pink-200 p-3 text-gray-900 outline-none transition focus:border-pink-300 focus:ring-4 focus:ring-pink-100"
+              />
+              {vehicleNumber && (
+                <button
+                  onClick={() => setVehicleNumber('')}
+                  className="px-4 py-2 rounded-xl bg-gray-200 text-gray-700 hover:bg-gray-300 transition cursor-pointer"
+                  title="Clear vehicle number"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            {vehicleNumber && (
+              <div className="mt-2 text-left">
+                <span className="text-xs text-gray-600">Vehicle: </span>
+                <span className="text-sm font-semibold text-pink-700 bg-pink-50 px-2 py-1 rounded">{vehicleNumber}</span>
+              </div>
+            )}
           </div>
           
           <button
@@ -162,7 +235,7 @@ export default function SOS() {
             <div className="flex items-end">
               <button
                 type="submit"
-                className="w-full rounded-xl bg-pink-500 py-3 font-semibold text-white shadow-md transition hover:bg-pink-600 hover:shadow-lg"
+                className="w-full rounded-xl bg-pink-500 py-3 font-semibold text-white shadow-md transition hover:bg-pink-600 hover:shadow-lg cursor-pointer"
               >
                 Add Contact
               </button>

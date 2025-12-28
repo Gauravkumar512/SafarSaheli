@@ -240,6 +240,53 @@ class MLModelService:
         
         return round(safety_score, 2)
     
+    def _routes_are_different(self, route1: Dict, route2: Dict, threshold_km: float = 0.5) -> bool:
+        """
+        Check if two routes are significantly different.
+        
+        Args:
+            route1, route2: Route dictionaries with coordinates
+            threshold_km: Minimum distance difference in km to consider routes different
+        
+        Returns:
+            True if routes are different enough
+        """
+        if not route1 or not route2:
+            return False
+        
+        coords1 = route1.get("coordinates", [])
+        coords2 = route2.get("coordinates", [])
+        
+        if len(coords1) != len(coords2):
+            return True
+        
+        # Check if distance differs significantly
+        dist1 = route1.get("distance_km", 0)
+        dist2 = route2.get("distance_km", 0)
+        if abs(dist1 - dist2) > threshold_km:
+            return True
+        
+        # Check if coordinates differ significantly (sample check)
+        sample_size = min(10, len(coords1))
+        if sample_size == 0:
+            return False
+        
+        step = max(1, len(coords1) // sample_size)
+        differences = 0
+        
+        for i in range(0, len(coords1), step):
+            if i >= len(coords2):
+                return True
+            lat1, lng1 = coords1[i]
+            lat2, lng2 = coords2[i]
+            # Calculate distance between points
+            dist = self._calculate_distance(lat1, lng1, lat2, lng2)
+            if dist > 0.1:  # More than 100m difference
+                differences += 1
+        
+        # If more than 30% of sampled points differ significantly, routes are different
+        return differences > (sample_size * 0.3)
+    
     async def get_route_options(
         self, 
         start_lat: float, 
@@ -250,9 +297,11 @@ class MLModelService:
         """
         Fetch multiple route options from Geoapify API.
         
-        Currently fetches:
-        - Shortest route (drive mode)
-        - Alternative route (if available)
+        Fetches routes with different preferences:
+        - Fastest route (default)
+        - Shortest route
+        - Balanced route (if available)
+        - Alternative routes using alternatives parameter
         
         Args:
             start_lat, start_lng: Start coordinates
@@ -262,27 +311,152 @@ class MLModelService:
             List of route dictionaries with coordinates, distance, and duration
         """
         routes = []
+        seen_routes = []  # Track routes to avoid duplicates
         
         try:
-            # Fetch shortest route
-            route1 = await self._fetch_geoapify_route(
-                start_lat, start_lng, end_lat, end_lng, mode="drive"
+            # Method 1: Fetch with alternatives parameter (gets multiple routes in one call)
+            alt_routes = await self._fetch_geoapify_alternatives(
+                start_lat, start_lng, end_lat, end_lng
             )
-            if route1:
-                routes.append(route1)
+            for route in alt_routes:
+                if route and self._is_unique_route(route, seen_routes):
+                    routes.append(route)
+                    seen_routes.append(route)
             
-            # Try to fetch alternative route (if Geoapify provides it)
-            # Note: Geoapify may provide alternatives via different modes
-            route2 = await self._fetch_geoapify_route(
-                start_lat, start_lng, end_lat, end_lng, mode="drive,safe"
-            )
-            if route2 and route2 != route1:
-                routes.append(route2)
+            # Method 2: Fetch routes with different preferences if we don't have enough
+            if len(routes) < 3:
+                # Try fastest route
+                route_fast = await self._fetch_geoapify_route(
+                    start_lat, start_lng, end_lat, end_lng, mode="drive"
+                )
+                if route_fast and self._is_unique_route(route_fast, seen_routes):
+                    routes.append(route_fast)
+                    seen_routes.append(route_fast)
+                
+                # Try shortest route
+                route_short = await self._fetch_geoapify_route(
+                    start_lat, start_lng, end_lat, end_lng, mode="drive", preference="shortest"
+                )
+                if route_short and self._is_unique_route(route_short, seen_routes):
+                    routes.append(route_short)
+                    seen_routes.append(route_short)
+                
+                # Try balanced route
+                route_balanced = await self._fetch_geoapify_route(
+                    start_lat, start_lng, end_lat, end_lng, mode="drive", preference="balanced"
+                )
+                if route_balanced and self._is_unique_route(route_balanced, seen_routes):
+                    routes.append(route_balanced)
+                    seen_routes.append(route_balanced)
+            
+            print(f"[ML Service] Fetched {len(routes)} unique route(s)")
             
         except Exception as e:
             print(f"[ML Service] Error fetching routes: {e}")
+            import traceback
+            traceback.print_exc()
         
         return routes
+    
+    def _is_unique_route(self, new_route: Dict, seen_routes: List[Dict], threshold_km: float = 0.3) -> bool:
+        """Check if a route is unique compared to already seen routes."""
+        if not new_route:
+            return False
+        
+        for seen_route in seen_routes:
+            if not self._routes_are_different(new_route, seen_route, threshold_km):
+                return False
+        
+        return True
+    
+    async def _fetch_geoapify_alternatives(
+        self,
+        start_lat: float,
+        start_lng: float,
+        end_lat: float,
+        end_lng: float
+    ) -> List[Dict]:
+        """
+        Fetch multiple alternative routes from Geoapify using alternatives parameter.
+        
+        Args:
+            start_lat, start_lng: Start coordinates
+            end_lat, end_lng: End coordinates
+        
+        Returns:
+            List of route dictionaries
+        """
+        routes = []
+        
+        # Try to get alternatives (up to 3 routes)
+        url = (
+            f"https://api.geoapify.com/v1/routing?"
+            f"waypoints={start_lat},{start_lng}|{end_lat},{end_lng}"
+            f"&mode=drive&alternatives=3&apiKey={GEOAPIFY_API_KEY}"
+        )
+        
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        
+                        if data.get("features"):
+                            # Process all features (each is a route)
+                            for feature in data["features"]:
+                                route = self._parse_geoapify_feature(feature)
+                                if route:
+                                    routes.append(route)
+                        
+                        print(f"[ML Service] Got {len(routes)} route(s) from alternatives API")
+                    else:
+                        print(f"[ML Service] Alternatives API returned status {response.status}")
+        except Exception as e:
+            print(f"[ML Service] Error fetching alternatives: {e}")
+        
+        return routes
+    
+    def _parse_geoapify_feature(self, feature: Dict) -> Optional[Dict]:
+        """Parse a Geoapify feature into route dictionary."""
+        try:
+            geometry = feature.get("geometry", {})
+            properties = feature.get("properties", {})
+            
+            # Extract coordinates
+            if geometry.get("type") == "MultiLineString":
+                coords = geometry.get("coordinates", [])
+                flattened = [item for sublist in coords for item in sublist]
+            else:
+                flattened = geometry.get("coordinates", [])
+            
+            if not flattened:
+                return None
+            
+            # Convert from [lng, lat] to [lat, lng]
+            route_coords = [[coord[1], coord[0]] for coord in flattened]
+            
+            # Extract distance and duration
+            distance_m = (
+                properties.get("distance") or
+                properties.get("summary", {}).get("distance") or
+                (properties.get("legs", [{}])[0].get("distance") if properties.get("legs") else None) or
+                0
+            )
+            duration_s = (
+                properties.get("time") or
+                properties.get("summary", {}).get("duration") or
+                (properties.get("legs", [{}])[0].get("duration") if properties.get("legs") else None) or
+                0
+            )
+            
+            return {
+                "coordinates": route_coords,
+                "distance_km": distance_m / 1000.0 if distance_m else 0,
+                "duration_min": duration_s / 60.0 if duration_s else 0
+            }
+        except Exception as e:
+            print(f"[ML Service] Error parsing feature: {e}")
+            return None
     
     async def _fetch_geoapify_route(
         self,
@@ -290,7 +464,8 @@ class MLModelService:
         start_lng: float,
         end_lat: float,
         end_lng: float,
-        mode: str = "drive"
+        mode: str = "drive",
+        preference: str = None
     ) -> Optional[Dict]:
         """
         Fetch a single route from Geoapify Directions API.
@@ -299,6 +474,7 @@ class MLModelService:
             start_lat, start_lng: Start coordinates
             end_lat, end_lng: End coordinates
             mode: Route mode (drive, walk, etc.)
+            preference: Route preference (fastest, shortest, balanced)
         
         Returns:
             Route dictionary with coordinates, distance_km, duration_min
@@ -308,6 +484,9 @@ class MLModelService:
             f"waypoints={start_lat},{start_lng}|{end_lat},{end_lng}"
             f"&mode={mode}&apiKey={GEOAPIFY_API_KEY}"
         )
+        
+        if preference:
+            url += f"&preference={preference}"
         
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as response:
@@ -320,36 +499,5 @@ class MLModelService:
                     return None
                 
                 feature = data["features"][0]
-                geometry = feature.get("geometry", {})
-                properties = feature.get("properties", {})
-                
-                # Extract coordinates
-                if geometry.get("type") == "MultiLineString":
-                    coords = geometry.get("coordinates", [])
-                    flattened = [item for sublist in coords for item in sublist]
-                else:
-                    flattened = geometry.get("coordinates", [])
-                
-                # Convert from [lng, lat] to [lat, lng]
-                route_coords = [[coord[1], coord[0]] for coord in flattened]
-                
-                # Extract distance and duration
-                distance_m = (
-                    properties.get("distance") or
-                    properties.get("summary", {}).get("distance") or
-                    (properties.get("legs", [{}])[0].get("distance") if properties.get("legs") else None) or
-                    0
-                )
-                duration_s = (
-                    properties.get("time") or
-                    properties.get("summary", {}).get("duration") or
-                    (properties.get("legs", [{}])[0].get("duration") if properties.get("legs") else None) or
-                    0
-                )
-                
-                return {
-                    "coordinates": route_coords,
-                    "distance_km": distance_m / 1000.0 if distance_m else 0,
-                    "duration_min": duration_s / 60.0 if duration_s else 0
-                }
+                return self._parse_geoapify_feature(feature)
 

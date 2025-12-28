@@ -25,13 +25,13 @@ const categories = [
   { type: 'washroom', icon: '🚻', name: 'Washroom', overpass: ['amenity=toilets', 'toilets=yes'] }
 ];
 
-// 🔍 Using a 10 km radius now
+// 🔍 Using a 8 km radius (maximum)
 function getOverpassQuery({ lat, lng }, kv) {
   const filters = Array.isArray(kv) ? kv : [kv];
   const blocks = filters.map(f => `
-      node[${f}](around:10000,${lat},${lng});
-      way[${f}](around:10000,${lat},${lng});
-      rel[${f}](around:10000,${lat},${lng});
+      node[${f}](around:8000,${lat},${lng});
+      way[${f}](around:8000,${lat},${lng});
+      rel[${f}](around:8000,${lat},${lng});
   `).join('\n');
   return `
     [out:json][timeout:25];
@@ -46,6 +46,19 @@ function FlyTo({ pos }) {
   const map = useMap();
   useEffect(() => {
     if (pos) map.flyTo([pos.lat, pos.lng], 15);
+  }, [pos, map]);
+  return null;
+}
+
+function FlyToSelectedPlace({ pos }) {
+  const map = useMap();
+  useEffect(() => {
+    if (pos) {
+      map.flyTo([pos.lat, pos.lng], 16, {
+        animate: true,
+        duration: 1.5
+      });
+    }
   }, [pos, map]);
   return null;
 }
@@ -66,6 +79,11 @@ export default function GoogleMap() {
   const [activeCat, setActiveCat] = useState(null);
   const [places, setPlaces] = useState({});
   const [loading, setLoading] = useState(false);
+  const [selectedPlace, setSelectedPlace] = useState(null); // Selected place to show on map
+  const [selectedPlaceCoords, setSelectedPlaceCoords] = useState(null); // Geocoded coordinates
+  
+  // Geoapify API key (same as used in SafetyRoutes)
+  const geoapifyApiKey = 'd188108bd5574dddaa900e8036d19f2a';
 
   async function ensureLocationAndSet(cat) {
     setActiveCat(cat);
@@ -96,10 +114,91 @@ export default function GoogleMap() {
     }
   }
 
+  // Geocode a place using Geoapify
+  async function geocodePlace(place) {
+    try {
+      // Build search query from place name and address
+      const name = place.tags?.name || '';
+      const street = place.tags?.['addr:street'] || '';
+      const city = place.tags?.['addr:city'] || 'Delhi';
+      const searchQuery = `${name} ${street} ${city}`.trim();
+      
+      const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(searchQuery)}&limit=1&filter=countrycode:in&apiKey=${geoapifyApiKey}`;
+      const res = await fetch(url);
+      
+      if (!res.ok) {
+        throw new Error('Geocoding failed');
+      }
+      
+      const data = await res.json();
+      const feature = data.features?.[0];
+      
+      if (feature) {
+        return {
+          lat: feature.properties.lat,
+          lng: feature.properties.lon,
+          formatted: feature.properties.formatted
+        };
+      }
+      
+      // Fallback to original coordinates if geocoding fails
+      return {
+        lat: place.lat,
+        lng: place.lng,
+        formatted: name
+      };
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      // Fallback to original coordinates
+      return {
+        lat: place.lat,
+        lng: place.lng,
+        formatted: place.tags?.name || 'Location'
+      };
+    }
+  }
+
+  // Handle place click
+  async function handlePlaceClick(place) {
+    setSelectedPlace(place);
+    setLoading(true);
+    
+    try {
+      // Geocode the place to get accurate coordinates
+      const coords = await geocodePlace(place);
+      setSelectedPlaceCoords(coords);
+    } catch (error) {
+      console.error('Error geocoding place:', error);
+      // Use original coordinates as fallback
+      setSelectedPlaceCoords({
+        lat: place.lat,
+        lng: place.lng,
+        formatted: place.tags?.name || 'Location'
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Open in Google Maps with navigation
+  function openInGoogleMaps(place, coords) {
+    if (!coords) {
+      // Fallback to original coordinates
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}&travelmode=driving`;
+      window.open(url, '_blank', 'noopener');
+      return;
+    }
+    
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${coords.lat},${coords.lng}&travelmode=driving`;
+    window.open(url, '_blank', 'noopener');
+  }
+
   useEffect(() => {
     if (!activeCat || !center) return;
     setLoading(true);
     setError('');
+    setSelectedPlace(null);
+    setSelectedPlaceCoords(null);
     const catData = categories.find(c => c.type === activeCat);
     if (!catData) return;
     const url = 'https://overpass-api.de/api/interpreter';
@@ -113,7 +212,7 @@ export default function GoogleMap() {
           lat: e.lat || e.center?.lat,
           lng: e.lon || e.center?.lon,
           tags: e.tags || {},
-        })).filter(e => e.lat && e.lng).slice(0, 50); // increased max results
+        })).filter(e => e.lat && e.lng).slice(0, 6); // Maximum 6 results
         setPlaces(ps => ({ ...ps, [activeCat]: locs }));
         setLoading(false);
       })
@@ -131,7 +230,7 @@ export default function GoogleMap() {
             <button
               key={c.type}
               onClick={() => ensureLocationAndSet(c.type)}
-              className={`inline-flex items-center gap-2 rounded-full border px-6 py-2 text-base font-semibold transition-all
+              className={`inline-flex items-center gap-2 rounded-full border px-6 py-2 text-base font-semibold transition-all cursor-pointer
                 ${activeCat === c.type
                   ? 'border-pink-500 bg-pink-100 text-pink-700 shadow'
                   : 'border-pink-200 bg-white text-pink-600 hover:bg-pink-50'}`}
@@ -162,6 +261,7 @@ export default function GoogleMap() {
               attributionControl={true}
             >
               <FlyTo pos={center} />
+              <FlyToSelectedPlace pos={selectedPlaceCoords} />
               <TileLayer
                 attribution='<a href="https://osm.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -170,20 +270,60 @@ export default function GoogleMap() {
                 const visible = activeCat === 'washroom' ? (places[activeCat] || []) : (places[activeCat] || []).filter(p => p.tags?.name);
                 return (
                   <>
-                    <FitToPlaces places={visible} />
-                    {visible.map((p) => (
-                      <Marker key={p.id} position={[p.lat, p.lng]} icon={pinIcon}>
-                        <Popup>
-                          <div style={{ minWidth: 120 }}>
-                            {p.tags.name && (<b>{p.tags.name}</b>)}
-                            <div className="text-xs text-gray-700 mt-1">
-                              {p.tags['addr:street']}&nbsp;{p.tags['addr:housenumber']}<br />
-                              {p.tags['addr:city'] || ''}
+                    {!selectedPlaceCoords && <FitToPlaces places={visible} />}
+                    {visible.map((p) => {
+                      const isSelected = selectedPlace && selectedPlace.id === p.id;
+                      return (
+                        <Marker 
+                          key={p.id} 
+                          position={[p.lat, p.lng]} 
+                          icon={pinIcon}
+                        >
+                          <Popup>
+                            <div style={{ minWidth: 120 }}>
+                              {p.tags.name && (<b>{p.tags.name}</b>)}
+                              <div className="text-xs text-gray-700 mt-1">
+                                {p.tags['addr:street']}&nbsp;{p.tags['addr:housenumber']}<br />
+                                {p.tags['addr:city'] || ''}
+                              </div>
                             </div>
+                          </Popup>
+                        </Marker>
+                      );
+                    })}
+                    {/* Highlight selected place with a different marker */}
+                    {selectedPlaceCoords && (
+                      <Marker 
+                        position={[selectedPlaceCoords.lat, selectedPlaceCoords.lng]}
+                        icon={new L.DivIcon({
+                          className: '',
+                          html: `
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                              <path d="M12 22s-7-5.373-7-12a7 7 0 1 1 14 0c0 6.627-7 12-7 12z" fill="#ef4444" fill-opacity="0.3"/>
+                              <circle cx="12" cy="10" r="4" fill="#ef4444"/>
+                            </svg>
+                          `,
+                          iconSize: [32, 40],
+                          iconAnchor: [16, 40],
+                          popupAnchor: [0, -40]
+                        })}
+                      >
+                        <Popup>
+                          <div style={{ minWidth: 150 }}>
+                            <b className="text-red-600">{selectedPlace?.tags?.name || 'Selected Location'}</b>
+                            <div className="text-xs text-gray-700 mt-1">
+                              {selectedPlaceCoords.formatted}
+                            </div>
+                            <button
+                              onClick={() => openInGoogleMaps(selectedPlace, selectedPlaceCoords)}
+                              className="mt-2 w-full rounded-lg px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 cursor-pointer transition"
+                            >
+                              Navigate in Google Maps
+                            </button>
                           </div>
                         </Popup>
                       </Marker>
-                    ))}
+                    )}
                   </>
                 );
               })()}
@@ -199,19 +339,51 @@ export default function GoogleMap() {
           )}
           {(() => {
             const visible = activeCat === 'washroom' ? (places[activeCat] || []) : (places[activeCat] || []).filter(p => p.tags?.name);
-            return visible.map((p) => (
-            <div key={p.id} className="rounded-2xl border border-pink-200 bg-white p-4 shadow group hover:border-pink-300">
-              <div className="font-bold text-pink-700 mb-0.5 flex items-center gap-1">
-                {p.tags.name || ''}
-              </div>
-              <div className="text-gray-600 text-xs mb-2">{p.tags['addr:street']} {p.tags['addr:housenumber']} {p.tags['addr:city']}</div>
-              <a
-                href={`https://www.openstreetmap.org/?mlat=${p.lat}&mlon=${p.lng}#map=19/${p.lat}/${p.lng}`}
-                target="_blank" rel="noopener noreferrer"
-                className="inline-block mt-1 text-xs rounded-full border border-pink-200 px-2 py-1 text-pink-600 hover:bg-pink-50 transition"
-              >View on OpenStreetMap →</a>
-            </div>
-          )) })()}
+            return visible.map((p) => {
+              const isSelected = selectedPlace && selectedPlace.id === p.id;
+              return (
+                <div 
+                  key={p.id} 
+                  className={`rounded-2xl border p-4 shadow group transition-all cursor-pointer ${
+                    isSelected 
+                      ? 'border-red-500 bg-red-50 ring-2 ring-red-200' 
+                      : 'border-pink-200 bg-white hover:border-pink-300 hover:shadow-md'
+                  }`}
+                  onClick={() => handlePlaceClick(p)}
+                >
+                  <div className={`font-bold mb-0.5 flex items-center gap-1 ${
+                    isSelected ? 'text-red-700' : 'text-pink-700'
+                  }`}>
+                    {p.tags.name || ''}
+                    {isSelected && <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded-full">Selected</span>}
+                  </div>
+                  <div className="text-gray-600 text-xs mb-2">
+                    {p.tags['addr:street']} {p.tags['addr:housenumber']} {p.tags['addr:city']}
+                  </div>
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openInGoogleMaps(p, selectedPlace && selectedPlace.id === p.id ? selectedPlaceCoords : null);
+                      }}
+                      className="text-xs rounded-lg px-3 py-1.5 bg-blue-600 text-white font-semibold hover:bg-blue-700 cursor-pointer transition"
+                    >
+                      Navigate in Google Maps
+                    </button>
+                    <a
+                      href={`https://www.openstreetmap.org/?mlat=${p.lat}&mlon=${p.lng}#map=19/${p.lat}/${p.lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-block text-xs rounded-lg border border-pink-200 px-3 py-1.5 text-pink-600 hover:bg-pink-50 transition cursor-pointer"
+                    >
+                      View on OSM →
+                    </a>
+                  </div>
+                </div>
+              );
+            });
+          })()}
         </div>
       )}
     </div>
