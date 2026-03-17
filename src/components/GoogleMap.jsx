@@ -82,8 +82,12 @@ export default function GoogleMap() {
   const [selectedPlace, setSelectedPlace] = useState(null); // Selected place to show on map
   const [selectedPlaceCoords, setSelectedPlaceCoords] = useState(null); // Geocoded coordinates
   
-  // Geoapify API key (same as used in SafetyRoutes)
-  const geoapifyApiKey = 'd188108bd5574dddaa900e8036d19f2a';
+  // Geoapify API key from environment variable
+  const geoapifyApiKey = import.meta.env.VITE_GEOAPIFY_API_KEY;
+  
+  if (!geoapifyApiKey) {
+    console.error('VITE_GEOAPIFY_API_KEY not found in environment variables. Please create a .env file with VITE_GEOAPIFY_API_KEY=your_key');
+  }
 
   async function ensureLocationAndSet(cat) {
     setActiveCat(cat);

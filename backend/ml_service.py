@@ -14,9 +14,19 @@ import os
 import aiohttp
 from typing import List, Tuple, Dict, Optional
 import math
+from dotenv import load_dotenv
 
-# Geoapify API key (same as frontend)
-GEOAPIFY_API_KEY = "d188108bd5574dddaa900e8036d19f2a"
+# Load environment variables
+load_dotenv()
+
+# Geoapify API key from environment variable
+GEOAPIFY_API_KEY = os.getenv("GEOAPIFY_API_KEY")
+
+if not GEOAPIFY_API_KEY:
+    raise ValueError(
+        "GEOAPIFY_API_KEY not found in environment variables. "
+        "Please create a .env file in the backend/ directory with GEOAPIFY_API_KEY=your_key"
+    )
 
 
 class MLModelService:

@@ -62,8 +62,8 @@ export default function SafetyRoutes() {
   const [geoRoute, setGeoRoute] = useState([]); // [lat, lng]
   const [isAnimating, setIsAnimating] = useState(false);
   const animTimerRef = useRef(null);
-  // PUT YOUR GEOAPIFY API KEY HERE
-  const apiKey = 'd188108bd5574dddaa900e8036d19f2a';
+  // Geoapify API key from environment variable
+  const apiKey = import.meta.env.VITE_GEOAPIFY_API_KEY;
   const [mapReady, setMapReady] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const startMarkerRef = useRef(null);
@@ -101,7 +101,7 @@ export default function SafetyRoutes() {
       console.log('[Geoapify] Vite key present:', Boolean(typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEOAPIFY_KEY));
     } catch {}
     if (!apiKey || apiKey === 'YOUR_GEOAPIFY_API_KEY') {
-      setErrorMsg('Geoapify API key missing. For Vite, set VITE_GEOAPIFY_KEY in .env and restart.');
+      setErrorMsg('Geoapify API key missing. Please create a .env file in the project root with VITE_GEOAPIFY_API_KEY=your_key and restart the dev server.');
       return;
     }
     const map = new maplibregl.Map({
