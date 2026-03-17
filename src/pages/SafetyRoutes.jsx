@@ -98,7 +98,7 @@ export default function SafetyRoutes() {
       // eslint-disable-next-line no-console
       console.log('[Geoapify] API key detected:', masked);
       // eslint-disable-next-line no-console
-      console.log('[Geoapify] Vite key present:', Boolean(typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEOAPIFY_KEY));
+      console.log('[Geoapify] Vite key present:', Boolean(typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEOAPIFY_API_KEY));
     } catch {}
     if (!apiKey || apiKey === 'YOUR_GEOAPIFY_API_KEY') {
       setErrorMsg('Geoapify API key missing. Please create a .env file in the project root with VITE_GEOAPIFY_API_KEY=your_key and restart the dev server.');
