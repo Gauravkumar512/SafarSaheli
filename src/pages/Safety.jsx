@@ -8,7 +8,7 @@ const categories = [
   { id: 'hospital',  icon: '🏥', label: 'Hospital',  geo: 'healthcare.hospital' },
   { id: 'hotel',     icon: '🏨', label: 'Hotel',     geo: 'accommodation.hotel' },
   { id: 'police',    icon: '👮', label: 'Police',    geo: 'service.police' },
-  { id: 'washroom',  icon: '🚻', label: 'Washroom',  geo: 'amenity.toilets' },
+  { id: 'washroom',  icon: '🚻', label: 'Washroom',  geo: 'amenity.toilet' },
   { id: 'pharmacy',  icon: '💊', label: 'Pharmacy',  geo: 'healthcare.pharmacy' },
   { id: 'metro',     icon: '🚇', label: 'Metro',     geo: 'public_transport.subway' },
 ];
@@ -49,6 +49,38 @@ export default function Safety() {
     );
   }, []);
 
+  /** Parse Geoapify features into place objects */
+  const parseFeatures = useCallback((features) => {
+    return (features || [])
+      .map((f) => {
+        const p = f.properties || {};
+        return {
+          id: p.place_id || f.id || Math.random().toString(36).slice(2),
+          name: p.name || p.address_line1 || '',
+          address: p.formatted || p.address_line2 || '',
+          phone: p.contact?.phone || p.datasource?.raw?.phone || null,
+          lat: p.lat,
+          lng: p.lon,
+          distance: haversine(userPos.lat, userPos.lng, p.lat, p.lon),
+        };
+      })
+      .sort((a, b) => a.distance - b.distance);
+  }, [userPos]);
+
+  /** Try fetching a single Geoapify category, returns { ok, data } */
+  const tryFetchCategory = useCallback(async (geoCategory) => {
+    const url =
+      `https://api.geoapify.com/v2/places` +
+      `?categories=${geoCategory}` +
+      `&filter=circle:${userPos.lng},${userPos.lat},2000` +
+      `&limit=6` +
+      `&apiKey=${GEOAPIFY_KEY}`;
+    const res = await fetch(url);
+    if (!res.ok) return { ok: false, status: res.status };
+    const data = await res.json();
+    return { ok: true, data };
+  }, [userPos]);
+
   // ---- Fetch places when category or position changes ----
   const fetchPlaces = useCallback(async (catId) => {
     if (!userPos || !catId) return;
@@ -60,39 +92,36 @@ export default function Safety() {
     setPlaces([]);
 
     try {
-      const url =
-        `https://api.geoapify.com/v2/places` +
-        `?categories=${cat.geo}` +
-        `&filter=circle:${userPos.lng},${userPos.lat},2000` +
-        `&limit=6` +
-        `&apiKey=${GEOAPIFY_KEY}`;
+      const result = await tryFetchCategory(cat.geo);
 
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`API error ${res.status}`);
-      const data = await res.json();
+      if (result.ok) {
+        setPlaces(parseFeatures(result.data.features));
+        return;
+      }
 
-      const mapped = (data.features || [])
-        .map((f) => {
-          const p = f.properties || {};
-          return {
-            id: p.place_id || f.id || Math.random().toString(36).slice(2),
-            name: p.name || p.address_line1 || '',
-            address: p.formatted || p.address_line2 || '',
-            phone: p.contact?.phone || p.datasource?.raw?.phone || null,
-            lat: p.lat,
-            lng: p.lon,
-            distance: haversine(userPos.lat, userPos.lng, p.lat, p.lon),
-          };
-        })
-        .sort((a, b) => a.distance - b.distance);
+      // If primary category failed with 400 and this is washroom, try fallbacks
+      if (catId === 'washroom' && result.status === 400) {
+        const fallbacks = ['amenity.public_toilet', 'amenity.toilets', 'service.restroom'];
+        for (const fallbackCat of fallbacks) {
+          const fbResult = await tryFetchCategory(fallbackCat);
+          if (fbResult.ok) {
+            setPlaces(parseFeatures(fbResult.data.features));
+            return;
+          }
+        }
+        // All fallbacks failed — show friendly message
+        setFetchError('No washrooms found in your area');
+        return;
+      }
 
-      setPlaces(mapped);
+      // Non-washroom category error
+      throw new Error(`API error ${result.status}`);
     } catch (e) {
-      setFetchError(e.message || 'Failed to fetch places');
+      if (!fetchError) setFetchError(e.message || 'Failed to fetch places');
     } finally {
       setFetching(false);
     }
-  }, [userPos]);
+  }, [userPos, tryFetchCategory, parseFeatures, fetchError]);
 
   useEffect(() => {
     if (activeCat && userPos) fetchPlaces(activeCat);

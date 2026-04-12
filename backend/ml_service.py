@@ -16,16 +16,18 @@ from typing import List, Tuple, Dict, Optional
 import math
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+_backend_dir = os.path.dirname(os.path.abspath(__file__))
+_project_root = os.path.dirname(_backend_dir)
+load_dotenv(os.path.join(_backend_dir, ".env"))
+load_dotenv(os.path.join(_project_root, ".env"))
 
-# Geoapify API key from environment variable
-GEOAPIFY_API_KEY = os.getenv("GEOAPIFY_API_KEY")
+# Geoapify: backend GEOAPIFY_API_KEY or Vite-style key in root .env
+GEOAPIFY_API_KEY = os.getenv("GEOAPIFY_API_KEY") or os.getenv("VITE_GEOAPIFY_API_KEY")
 
 if not GEOAPIFY_API_KEY:
     raise ValueError(
-        "GEOAPIFY_API_KEY not found in environment variables. "
-        "Please create a .env file in the backend/ directory with GEOAPIFY_API_KEY=your_key"
+        "Geoapify API key missing. Set GEOAPIFY_API_KEY in backend/.env "
+        "or VITE_GEOAPIFY_API_KEY in the project root .env"
     )
 
 
@@ -179,10 +181,11 @@ class MLModelService:
         Score a route's safety based on proximity to high-risk crime clusters.
         
         Algorithm:
-        1. For each point in the route, find nearby crime data points
+        1. For each point in the route, find nearby crime data points (5km radius)
         2. Calculate risk based on proximity and cluster risk scores
-        3. Aggregate risk across entire route
-        4. Convert to safety score (0-100, higher = safer)
+        3. Track risky vs safe points separately to avoid dilution
+        4. Use combined scoring: severity of risk (60%) + route coverage in risky areas (40%)
+        5. Convert to safety score (0-100, higher = safer)
         
         Args:
             route_coords: List of [lat, lng] coordinates along the route
@@ -193,8 +196,12 @@ class MLModelService:
         if not route_coords:
             return 50.0  # Default neutral score
         
-        total_risk = 0.0
+        RISK_RADIUS_KM = 5.0  # Search radius for nearby crime data
+        
         point_count = 0
+        risky_point_count = 0
+        total_risk_at_risky_points = 0.0
+        max_point_risk = 0.0
         
         # Sample route points (every Nth point to avoid over-processing)
         sample_rate = max(1, len(route_coords) // 50)  # Sample ~50 points max
@@ -208,45 +215,62 @@ class MLModelService:
             for crime_lat, crime_lon, crime_risk in self.crime_coords:
                 distance_km = self._calculate_distance(lat, lng, crime_lat, crime_lon)
                 
-                # Only consider crimes within 2km radius (adjustable)
-                if distance_km <= 2.0:
+                # Consider crimes within the search radius
+                if distance_km <= RISK_RADIUS_KM:
                     # Inverse distance weighting: closer = higher risk
-                    weight = 1.0 / (1.0 + distance_km * 2)
+                    weight = 1.0 / (1.0 + distance_km)
                     point_risk += crime_risk * weight
                     nearby_count += 1
             
             # Normalize by number of nearby crimes
             if nearby_count > 0:
                 point_risk = point_risk / nearby_count
+                risky_point_count += 1
+                total_risk_at_risky_points += point_risk
             
-            total_risk += point_risk
+            max_point_risk = max(max_point_risk, point_risk)
             point_count += 1
         
-        # Average risk across route
-        avg_risk = total_risk / point_count if point_count > 0 else 0
+        # --- Scoring: avoid dilution by zero-risk points ---
+        # Instead of averaging ALL points (which dilutes risk to near-zero when
+        # most points have no nearby crime data), we separately track:
+        # 1. Average risk at points that DO have nearby crime data (severity)
+        # 2. Fraction of route that passes through risky areas (coverage)
         
-        # Convert risk to safety score (0-100 scale)
-        # Higher risk -> lower safety score
-        # Normalize based on observed risk range from actual crime data
-        # After analysis, most routes have avg_risk between 50-300
-        # Using a more realistic normalization that better distributes scores
-        max_observed_risk = 400.0  # Adjusted based on typical route risks
-        min_observed_risk = 20.0   # Minimum risk for safe areas
-        
-        # Normalize risk to 0-1 range (inverse: higher risk = lower normalized value)
-        if avg_risk <= min_observed_risk:
-            normalized_risk = 0.0  # Very safe
-        elif avg_risk >= max_observed_risk:
-            normalized_risk = 1.0  # Very risky
+        if risky_point_count > 0 and point_count > 0:
+            avg_risk_at_risky = total_risk_at_risky_points / risky_point_count
+            risky_fraction = risky_point_count / point_count
         else:
-            # Linear interpolation: map risk range to 0-1
-            normalized_risk = (avg_risk - min_observed_risk) / (max_observed_risk - min_observed_risk)
+            avg_risk_at_risky = 0.0
+            risky_fraction = 0.0
         
-        # Convert to safety score: 0 = unsafe, 100 = safe
-        safety_score = (1.0 - normalized_risk) * 100
+        # Normalize risk severity (0-1 scale)
+        # Crime risk per point typically ranges 100-2000+ based on weighted crime data
+        risk_severity = min(avg_risk_at_risky / 800.0, 1.0)
+        
+        # Normalize max point risk (0-1 scale) - penalizes routes with extreme hotspots
+        max_risk_normalized = min(max_point_risk / 1200.0, 1.0)
+        
+        # Combined risk formula:
+        # - 40% from average severity at risky points (how dangerous the bad areas are)
+        # - 30% from max single-point risk (worst-case hotspot penalty)
+        # - 30% from coverage fraction (how much of the route is in risky areas)
+        combined_risk = (
+            risk_severity * 0.40 +
+            max_risk_normalized * 0.30 +
+            risky_fraction * 0.30
+        )
+        
+        # Convert to safety score: 0 = very unsafe, 100 = very safe
+        safety_score = (1.0 - combined_risk) * 100
         
         # Ensure score is between 0-100
         safety_score = max(0, min(100, safety_score))
+        
+        print(f"[ML Score] points={point_count}, risky={risky_point_count}, "
+              f"avg_risk_risky={avg_risk_at_risky:.1f}, max_risk={max_point_risk:.1f}, "
+              f"risky_frac={risky_fraction:.2f}, severity={risk_severity:.3f}, "
+              f"combined={combined_risk:.3f}, safety={safety_score:.1f}")
         
         return round(safety_score, 2)
     

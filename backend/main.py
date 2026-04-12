@@ -24,9 +24,10 @@ import sys
 from twilio.rest import Client
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-# Use override=True to ensure fresh load and verbose=True for debugging
-load_dotenv(override=True)
+_backend_dir = os.path.dirname(os.path.abspath(__file__))
+_project_root = os.path.dirname(_backend_dir)
+load_dotenv(os.path.join(_backend_dir, ".env"), override=True)
+load_dotenv(os.path.join(_project_root, ".env"), override=True)
 
 # Import our ML utilities (ml_service.py is in the same backend directory)
 from ml_service import MLModelService
