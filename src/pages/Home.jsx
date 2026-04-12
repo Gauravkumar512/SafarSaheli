@@ -31,7 +31,7 @@ export default function Home() {
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
                   to="/sos"
-                  className="rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 px-5 py-3 font-semibold text-white shadow-lg transition hover:from-pink-600 hover:to-purple-700"
+                  className="rounded-xl bg-gradient-to-r from-pink-500 to-rose-600 px-5 py-3 font-semibold text-white shadow-lg transition hover:from-pink-600 hover:to-rose-700"
                 >
                   Set up Emergency Contacts
                 </Link>
@@ -44,11 +44,11 @@ export default function Home() {
               </div>
             </div>
             <div className="relative hidden md:block">
-              <div className="absolute inset-0 bg-gradient-to-br from-pink-300/30 to-purple-300/30" />
+              <div className="absolute inset-0 bg-gradient-to-br from-pink-300/30 to-rose-300/30" />
               <div className="h-full w-full flex items-center justify-center p-10">
                 <div className="relative max-w-md rounded-3xl border border-white/50 bg-white/70 backdrop-blur-md shadow-xl p-6">
                   <div className="absolute -top-8 -left-8 h-24 w-24 rounded-full bg-pink-300/30 blur-2xl" />
-                  <div className="absolute -bottom-8 -right-8 h-24 w-24 rounded-full bg-purple-300/30 blur-2xl" />
+                  <div className="absolute -bottom-8 -right-8 h-24 w-24 rounded-full bg-rose-300/30 blur-2xl" />
                   <p className="text-xl font-semibold leading-relaxed text-gray-900">
                     "Your safety is your superpower. We’re here with you, every step."
                   </p>
@@ -67,7 +67,7 @@ export default function Home() {
               </h1>
               <p className="text-gray-600 mt-1">Where are we going today?</p>
             </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-600 rounded-2xl flex items-center justify-center">
+            <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-600 rounded-2xl flex items-center justify-center">
               <FiShield className="text-white text-2xl" />
             </div>
           </div>

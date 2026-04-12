@@ -65,7 +65,7 @@ export async function generateItinerary(input) {
 }
 
 
-export async function chatWithGemini(messages) {
+export async function chatWithGemini(messages, systemContext = '') {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('Missing VITE_GEMINI_API_KEY. Add it to your .env file.');
@@ -93,6 +93,14 @@ export async function chatWithGemini(messages) {
     contents.push({ role: 'user', parts: [{ text: 'Hello!' }] });
   }
 
+  // Build request body with optional system instruction
+  const requestBody = { contents };
+  if (systemContext) {
+    requestBody.systemInstruction = {
+      parts: [{ text: systemContext }],
+    };
+  }
+
   for (const version of versions) {
     try {
       const names = await listModels(version);
@@ -106,7 +114,7 @@ export async function chatWithGemini(messages) {
         const res = await fetch(`${endpoint}?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents }),
+          body: JSON.stringify(requestBody),
         });
         if (res.ok) {
           const data = await res.json();

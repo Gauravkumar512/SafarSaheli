@@ -70,8 +70,13 @@ export default function SafetyRoutes() {
   const endMarkerRef = useRef(null);
   const [startSug, setStartSug] = useState([]);
   const [destSug, setDestSug] = useState([]);
+  const [isLoadingStart, setIsLoadingStart] = useState(false);
+  const [isLoadingDest, setIsLoadingDest] = useState(false);
   const startDebRef = useRef(null);
   const destDebRef = useRef(null);
+  const startAbortRef = useRef(null);
+  const destAbortRef = useRef(null);
+  const searchContainerRef = useRef(null);
   const [routeInfo, setRouteInfo] = useState(null); // {distanceKm, durationMin, safetyScore}
   const [lastStart, setLastStart] = useState(null); // {lat,lng}
   const [lastEnd, setLastEnd] = useState(null);     // {lat,lng}
@@ -87,6 +92,58 @@ export default function SafetyRoutes() {
   useEffect(() => {
     console.log('[SafetyRoutes] API Base URL:', API_BASE_URL);
     console.log('[SafetyRoutes] VITE_API_BASE_URL from env:', import.meta.env.VITE_API_BASE_URL);
+  }, []);
+
+  // ---- Autocomplete: fetch suggestions with AbortController ----
+  async function fetchSuggestions(query, setSuggestions, setLoadingFlag, abortRef) {
+    // Cancel any in-flight request for this input
+    if (abortRef.current) abortRef.current.abort();
+    abortRef.current = new AbortController();
+    setLoadingFlag(true);
+    try {
+      const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(query)}&limit=5&filter=countrycode:in&apiKey=${apiKey}`;
+      const res = await fetch(url, { signal: abortRef.current.signal });
+      if (!res.ok) throw new Error('Search failed');
+      const data = await res.json();
+      setSuggestions(
+        (data.features || []).map(f => ({
+          label: f.properties.formatted,
+          lat: f.properties.lat,
+          lon: f.properties.lon,
+        }))
+      );
+    } catch (err) {
+      if (err.name === 'AbortError') return; // expected, ignore
+      setSuggestions([]);
+    } finally {
+      setLoadingFlag(false);
+    }
+  }
+
+  function handleAutocompleteChange(value, setQuery, setSuggestions, setLoadingFlag, debRef, abortRef) {
+    setQuery(value);
+    if (value.length < 2) {
+      setSuggestions([]);
+      setLoadingFlag(false);
+      if (abortRef.current) abortRef.current.abort();
+      return;
+    }
+    if (debRef.current) clearTimeout(debRef.current);
+    debRef.current = setTimeout(() => {
+      fetchSuggestions(value, setSuggestions, setLoadingFlag, abortRef);
+    }, 300);
+  }
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) {
+        setStartSug([]);
+        setDestSug([]);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // Initialize MapLibre map with Geoapify style
@@ -434,89 +491,98 @@ export default function SafetyRoutes() {
       <div className="mx-auto max-w-3xl p-4 pb-24">
         <div className="mb-7 rounded-2xl bg-white/70 shadow border border-pink-200 p-4 flex flex-col gap-4">
           {/* Inputs */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+          <div ref={searchContainerRef} className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+            {/* Start Location */}
             <div className="relative flex-1">
-              <span className="absolute left-3 top-3 text-pink-400 text-lg"><FaWalking /></span>
-              <input
-                id="startLocation"
-                value={startVal}
-                onChange={e => {
-                  const v = e.target.value; setStartVal(v);
-                  if (startDebRef.current) clearTimeout(startDebRef.current);
-                  // Reduced debounce from 300ms to 150ms for faster search
-                  startDebRef.current = setTimeout(async () => {
-                    if (!v || v.length < 2) { setStartSug([]); return; }
-                    try {
-                      const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(v)}&limit=5&filter=countrycode:in&apiKey=${apiKey}`;
-                      const res = await fetch(url); 
-                      if (!res.ok) throw new Error('Search failed');
-                      const data = await res.json();
-                      setStartSug((data.features||[]).map(f => ({ label: f.properties.formatted, lat: f.properties.lat, lon: f.properties.lon })));
-                    } catch { setStartSug([]); }
-                  }, 150);
-                }}
-                placeholder="Search start location..."
-                className="pl-10 pr-9 py-3 w-full rounded-xl border border-pink-200 text-gray-900 text-sm focus:ring-2 focus:ring-blue-300 outline-none bg-white"
-              />
-              <span className="absolute right-3 top-3.5 text-pink-400 text-md cursor-pointer"><FaSearch /></span>
+              <div className="flex items-center border-2 border-pink-200 rounded-xl bg-white px-3 py-2.5 focus-within:border-pink-500 transition-colors">
+                <span className="text-pink-400 mr-2 text-lg"><FaWalking /></span>
+                <input
+                  id="startLocation"
+                  type="text"
+                  value={startVal}
+                  onChange={e => handleAutocompleteChange(
+                    e.target.value, setStartVal, setStartSug, setIsLoadingStart, startDebRef, startAbortRef
+                  )}
+                  placeholder="Search start location..."
+                  className="flex-1 outline-none text-gray-900 text-sm bg-transparent placeholder-gray-400"
+                />
+                {isLoadingStart ? (
+                  <div className="w-4 h-4 border-2 border-pink-300 border-t-pink-500 rounded-full animate-spin ml-2 shrink-0" />
+                ) : (
+                  <FaSearch className="text-pink-400 text-sm ml-2 shrink-0" />
+                )}
+              </div>
+              {/* Suggestion dropdown */}
+              {isLoadingStart && startSug.length === 0 && startVal.length >= 2 && (
+                <div className="absolute z-30 mt-1 left-0 right-0 bg-white border border-pink-200 rounded-xl shadow-lg p-3">
+                  <p className="text-gray-400 text-sm text-center">Searching...</p>
+                </div>
+              )}
               {startSug.length > 0 && (
-                <div className="absolute z-20 mt-1 left-0 right-0 bg-white border border-pink-200 rounded-xl shadow max-h-60 overflow-auto">
+                <div className="absolute z-30 mt-1 left-0 right-0 bg-white border border-pink-200 rounded-xl shadow-lg max-h-60 overflow-auto">
                   {startSug.map((s, i) => (
-                    <div 
-                      key={i} 
-                      className="px-3 py-2 text-sm text-gray-800 hover:bg-pink-50 cursor-pointer transition-colors" 
-                      onMouseDown={() => { 
-                        setStartVal(s.label); 
+                    <button
+                      key={i}
+                      type="button"
+                      className="w-full text-left px-4 py-3 hover:bg-pink-50 border-b border-gray-100 last:border-0 text-sm text-gray-700 flex items-center gap-2 cursor-pointer transition-colors"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setStartVal(s.label);
                         setStartSug([]);
-                        // Auto-set coordinates when suggestion is selected
                         setStartCoord({ lat: s.lat, lng: s.lon });
                       }}
                     >
-                      {s.label}
-                    </div>
+                      <span className="text-pink-400 shrink-0">📍</span>
+                      <span className="truncate">{s.label}</span>
+                    </button>
                   ))}
                 </div>
               )}
             </div>
+
+            {/* Destination Location */}
             <div className="relative flex-1">
-              <span className="absolute left-3 top-3 text-pink-400 text-lg"><FaFlag /></span>
-              <input
-                id="endLocation"
-                value={destVal}
-                onChange={e => {
-                  const v = e.target.value; setDestVal(v);
-                  if (destDebRef.current) clearTimeout(destDebRef.current);
-                  // Reduced debounce from 300ms to 150ms for faster search
-                  destDebRef.current = setTimeout(async () => {
-                    if (!v || v.length < 2) { setDestSug([]); return; }
-                    try {
-                      const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(v)}&limit=5&filter=countrycode:in&apiKey=${apiKey}`;
-                      const res = await fetch(url); 
-                      if (!res.ok) throw new Error('Search failed');
-                      const data = await res.json();
-                      setDestSug((data.features||[]).map(f => ({ label: f.properties.formatted, lat: f.properties.lat, lon: f.properties.lon })));
-                    } catch { setDestSug([]); }
-                  }, 150);
-                }}
-                placeholder="Search destination location..."
-                className="pl-10 pr-9 py-3 w-full rounded-xl border border-pink-200 text-gray-900 text-sm focus:ring-2 focus:ring-blue-300 outline-none bg-white"
-              />
-              <span className="absolute right-3 top-3.5 text-pink-400 text-md cursor-pointer"><FaSearch /></span>
+              <div className="flex items-center border-2 border-pink-200 rounded-xl bg-white px-3 py-2.5 focus-within:border-pink-500 transition-colors">
+                <span className="text-pink-400 mr-2 text-lg"><FaFlag /></span>
+                <input
+                  id="endLocation"
+                  type="text"
+                  value={destVal}
+                  onChange={e => handleAutocompleteChange(
+                    e.target.value, setDestVal, setDestSug, setIsLoadingDest, destDebRef, destAbortRef
+                  )}
+                  placeholder="Search destination location..."
+                  className="flex-1 outline-none text-gray-900 text-sm bg-transparent placeholder-gray-400"
+                />
+                {isLoadingDest ? (
+                  <div className="w-4 h-4 border-2 border-pink-300 border-t-pink-500 rounded-full animate-spin ml-2 shrink-0" />
+                ) : (
+                  <FaSearch className="text-pink-400 text-sm ml-2 shrink-0" />
+                )}
+              </div>
+              {/* Suggestion dropdown */}
+              {isLoadingDest && destSug.length === 0 && destVal.length >= 2 && (
+                <div className="absolute z-30 mt-1 left-0 right-0 bg-white border border-pink-200 rounded-xl shadow-lg p-3">
+                  <p className="text-gray-400 text-sm text-center">Searching...</p>
+                </div>
+              )}
               {destSug.length > 0 && (
-                <div className="absolute z-20 mt-1 left-0 right-0 bg-white border border-pink-200 rounded-xl shadow max-h-60 overflow-auto">
+                <div className="absolute z-30 mt-1 left-0 right-0 bg-white border border-pink-200 rounded-xl shadow-lg max-h-60 overflow-auto">
                   {destSug.map((s, i) => (
-                    <div 
-                      key={i} 
-                      className="px-3 py-2 text-sm text-gray-800 hover:bg-pink-50 cursor-pointer transition-colors" 
-                      onMouseDown={() => { 
-                        setDestVal(s.label); 
+                    <button
+                      key={i}
+                      type="button"
+                      className="w-full text-left px-4 py-3 hover:bg-pink-50 border-b border-gray-100 last:border-0 text-sm text-gray-700 flex items-center gap-2 cursor-pointer transition-colors"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setDestVal(s.label);
                         setDestSug([]);
-                        // Auto-set coordinates when suggestion is selected
                         setEndCoord({ lat: s.lat, lng: s.lon });
                       }}
                     >
-                      {s.label}
-                    </div>
+                      <span className="text-pink-400 shrink-0">📍</span>
+                      <span className="truncate">{s.label}</span>
+                    </button>
                   ))}
                 </div>
               )}
@@ -528,8 +594,8 @@ export default function SafetyRoutes() {
             disabled={isLoading}
             className={`mt-2 w-full rounded-xl px-5 py-4 text-white text-lg font-bold shadow-md transition-all duration-200 ${
               isLoading 
-                ? 'bg-blue-400 cursor-not-allowed' 
-                : 'bg-blue-600 hover:bg-blue-700 hover:shadow-lg active:scale-95 cursor-pointer'
+                ? 'bg-pink-400 cursor-not-allowed' 
+                : 'bg-pink-600 hover:bg-pink-700 hover:shadow-lg active:scale-95 cursor-pointer'
             }`}
             onClick={handleJourney}
           >
@@ -570,7 +636,7 @@ export default function SafetyRoutes() {
                       isSafest 
                         ? 'border-green-500 bg-green-50' 
                         : isSelected
-                        ? 'border-blue-500 bg-blue-50'
+                        ? 'border-pink-500 bg-pink-50'
                         : 'border-gray-200 bg-gray-50 hover:border-gray-300'
                     }`}
                   >
@@ -604,7 +670,7 @@ export default function SafetyRoutes() {
                       <button
                         className={`w-full mt-2 rounded-lg px-4 py-2 text-sm font-semibold transition cursor-pointer ${
                           isSelected
-                            ? 'bg-blue-600 text-white hover:bg-blue-700'
+                            ? 'bg-pink-600 text-white hover:bg-pink-700'
                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
                         onClick={() => {
@@ -646,7 +712,7 @@ export default function SafetyRoutes() {
               </div>
               {lastStart && lastEnd && selectedRouteForMaps && (
                 <button
-                  className="rounded-lg px-4 py-2 bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 whitespace-nowrap cursor-pointer"
+                  className="rounded-lg px-4 py-2 bg-pink-600 text-white text-sm font-semibold hover:bg-pink-700 whitespace-nowrap cursor-pointer"
                   onClick={() => {
                     // GOOGLE MAPS REDIRECT HANDLER - Use selected route
                     const url = `https://www.google.com/maps/dir/?api=1&origin=${lastStart.lat},${lastStart.lng}&destination=${lastEnd.lat},${lastEnd.lng}&travelmode=driving`;

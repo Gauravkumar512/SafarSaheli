@@ -320,7 +320,7 @@ export default function GoogleMap() {
                             </div>
                             <button
                               onClick={() => openInGoogleMaps(selectedPlace, selectedPlaceCoords)}
-                              className="mt-2 w-full rounded-lg px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 cursor-pointer transition"
+                              className="mt-2 w-full rounded-lg px-3 py-1.5 bg-pink-600 text-white text-xs font-semibold hover:bg-pink-700 cursor-pointer transition"
                             >
                               Navigate in Google Maps
                             </button>
@@ -370,7 +370,7 @@ export default function GoogleMap() {
                         e.stopPropagation();
                         openInGoogleMaps(p, selectedPlace && selectedPlace.id === p.id ? selectedPlaceCoords : null);
                       }}
-                      className="text-xs rounded-lg px-3 py-1.5 bg-blue-600 text-white font-semibold hover:bg-blue-700 cursor-pointer transition"
+                      className="text-xs rounded-lg px-3 py-1.5 bg-pink-600 text-white font-semibold hover:bg-pink-700 cursor-pointer transition"
                     >
                       Navigate in Google Maps
                     </button>

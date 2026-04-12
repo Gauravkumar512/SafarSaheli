@@ -1,5 +1,6 @@
 import { Link, NavLink } from 'react-router-dom';
-import { FaHome, FaRoute, FaShieldAlt, FaBell, FaHeart, FaUser, FaComments, FaHandHoldingHeart, FaCompass } from 'react-icons/fa';
+import { FaHome, FaRoute, FaShieldAlt, FaBell, FaComments, FaHandHoldingHeart, FaCompass } from 'react-icons/fa';
+import { FiUser } from 'react-icons/fi';
 
 const tabs = [
   { to: '/home', label: 'Home', icon: FaHome },
@@ -14,6 +15,7 @@ export default function TopBar() {
   return (
     <header className="sticky top-0 z-40 border-b border-white/30 bg-white/70 backdrop-blur-xl">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+        {/* Logo — always visible */}
         <Link to="/home" className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-pink-600 text-white ring-1 ring-white/40">
             <FaHandHoldingHeart />
@@ -23,6 +25,7 @@ export default function TopBar() {
           </div>
         </Link>
 
+        {/* Desktop nav — hidden on mobile */}
         <nav className="hidden gap-2 md:flex">
           {tabs.map(({ to, label, icon: Icon }) => (
             <NavLink key={to} to={to} className={({ isActive }) => `inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${isActive ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'}`}>
@@ -32,11 +35,10 @@ export default function TopBar() {
           ))}
         </nav>
 
-        <div className="hidden items-center sm:flex">
-          <Link to="/profile" className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 transition-colors">
-            <FaUser />
-          </Link>
-        </div>
+        {/* Profile icon — always visible (was hidden on mobile before) */}
+        <Link to="/profile" className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300 transition-colors">
+          <FiUser className="text-gray-600" />
+        </Link>
       </div>
     </header>
   );

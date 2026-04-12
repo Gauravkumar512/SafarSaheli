@@ -30,19 +30,19 @@ export default function Profile() {
   };
 
   const stats = [
-    { label: 'Safe Places Added', value: '12', color: 'from-emerald-400 to-green-500' },
-    { label: 'Trips Planned', value: '5', color: 'from-blue-400 to-cyan-500' },
-    { label: 'Community Points', value: ((loggedInUser?.points ?? (demoLeaderboard.find(x=>x.id===loggedInUser?.id)?.points ?? 0))).toLocaleString(), color: 'from-yellow-400 to-orange-500' },
-    { label: 'Reviews Given', value: '8', color: 'from-purple-400 to-pink-500' },
+    { label: 'Safe Places Added', value: '12', color: 'from-pink-400 to-rose-500' },
+    { label: 'Trips Planned', value: '5', color: 'from-rose-400 to-pink-500' },
+    { label: 'Community Points', value: ((loggedInUser?.points ?? (demoLeaderboard.find(x=>x.id===loggedInUser?.id)?.points ?? 0))).toLocaleString(), color: 'from-pink-500 to-rose-600' },
+    { label: 'Reviews Given', value: '8', color: 'from-rose-500 to-pink-600' },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-white">
       <div className="p-6 pb-24 max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center space-x-3 mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center text-white">
+            <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-500 rounded-2xl flex items-center justify-center text-white">
               <FiUser className="text-2xl" />
             </div>
             <div>
@@ -55,7 +55,7 @@ export default function Profile() {
         {/* User Info Card */}
         <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl p-8 border border-white/20 mb-8">
           <div className="flex items-center space-x-6 mb-6">
-            <div className="w-20 h-20 bg-gradient-to-br from-pink-500 to-purple-600 rounded-3xl flex items-center justify-center text-white">
+            <div className="w-20 h-20 bg-gradient-to-br from-pink-500 to-rose-600 rounded-3xl flex items-center justify-center text-white">
               <FiUser className="text-3xl" />
             </div>
             <div className="flex-1">
@@ -63,7 +63,7 @@ export default function Profile() {
               <p className="text-gray-600">{loggedInUser?.email}</p>
               <div className="flex items-center space-x-2 mt-2">
                 <span className="px-3 py-1 bg-green-100 text-green-800 text-sm font-semibold rounded-full">Verified User</span>
-                <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-semibold rounded-full">Community Member</span>
+                <span className="px-3 py-1 bg-pink-100 text-pink-800 text-sm font-semibold rounded-full">Community Member</span>
               </div>
             </div>
           </div>
@@ -118,7 +118,7 @@ export default function Profile() {
               disabled={!deferredPrompt || installed}
               className={`flex items-center justify-center space-x-3 p-4 rounded-2xl font-semibold transition-all duration-200 hover:scale-105 ${
                 deferredPrompt && !installed
-                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg hover:shadow-xl'
+                  ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg hover:shadow-xl'
                   : 'bg-gray-100 text-gray-500 cursor-not-allowed'
               }`}
             >

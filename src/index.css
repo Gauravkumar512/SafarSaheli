@@ -1,6 +1,37 @@
 @import "tailwindcss";
 
-/* App base styles */
+/* ===== SafarSaheli Design System ===== */
+:root {
+  --color-primary: #EC4899;
+  --color-primary-dark: #DB2777;
+  --color-primary-light: #FCE7F3;
+  --color-danger: #EF4444;
+  --color-safe: #22C55E;
+  --color-bg: #FFF1F2;
+}
+
+/* Base resets */
 html, body, #root {
   height: 100%;
+}
+
+/* Safe area support for notched devices */
+html {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+}
+
+/* Minimum touch target sizes for mobile */
+@media (max-width: 767px) {
+  button, a, input, select, textarea {
+    min-height: 44px;
+  }
+  body {
+    font-size: 14px;
+  }
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
 }
