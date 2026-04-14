@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import { AppProvider } from './context/AppContext';
 import Splash from './pages/Splash';
 import Login from './pages/Login';
@@ -32,6 +33,7 @@ export default function App() {
           </Route>
         </Routes>
       </BrowserRouter>
+      <Analytics />
     </AppProvider>
   );
 }
