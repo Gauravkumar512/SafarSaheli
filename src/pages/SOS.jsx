@@ -78,16 +78,16 @@ export default function SOS() {
   };
 
   const buildMessage = (locationUrl, hasLocation) => {
-    let message = '🚨 EMERGENCY ALERT from SafarSaheli\n\n';
+    let message = 'EMERGENCY ALERT from SafarSaheli\n\n';
     if (hasLocation && locationUrl) {
-      message += `📍 My Location: ${locationUrl}\n`;
+      message += `My Location: ${locationUrl}\n`;
     } else {
-      message += '📍 Location: Unable to get current location. Please call me immediately!\n';
+      message += 'Location: Unable to get current location. Please call me immediately!\n';
     }
     if (vehicleNumber?.trim()) {
-      message += `🚗 Vehicle Number: ${vehicleNumber.trim()}\n`;
+      message += `Vehicle Number: ${vehicleNumber.trim()}\n`;
     }
-    message += `⏰ Time: ${new Date().toLocaleString('en-IN')}\n`;
+    message += `Time: ${new Date().toLocaleString('en-IN')}\n`;
     message += '\nPlease help immediately!';
     return message;
   };
